@@ -16,8 +16,9 @@ const GanttModule = {
         const container = document.getElementById('ganttChart');
         container.innerHTML = '<div class="text-center p-4">Cargando...</div>';
 
+
         // Always fetch fresh data to define single source of truth from Server
-        const data = await API.get('/plan-maestro');
+        const data = await API.get('/plan-maestro?t=' + Date.now());
         window.appData = window.appData || {};
         window.appData.plan = data;
 

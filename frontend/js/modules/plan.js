@@ -5,8 +5,14 @@ const PlanModule = {
         PlanModule.setupEvents();
     },
 
+
     loadData: async () => {
-        const data = await API.get('/plan-maestro');
+        // Visual feedback ensuring user sees update is happening
+        const tbody = document.querySelector('#planTable tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4">Actualizando datos...</td></tr>';
+
+        // Prevent cache with timestamp
+        const data = await API.get('/plan-maestro?t=' + new Date().getTime());
         if (data) {
             window.appData = window.appData || {};
             window.appData.plan = data;
@@ -17,7 +23,7 @@ const PlanModule = {
                 filters: [
                     { id: 'filterProduct', key: 'product_code' },
                     { id: 'filterResp', key: 'primary_responsible' },
-                    { id: 'filterStatus', key: 'estado' }
+                    { id: 'filterStatus', key: 'status' }
                     // Note: Search Input logic is complex for 1:1 key. 
                     // We leave it out of cascade for now or handle separately?
                     // Let's keep Search separate listener to just filter the result of Cascade?
@@ -323,8 +329,10 @@ const PlanModule = {
                 Utils.closeModal('activityModal');
             }
 
-            // Refresh whatever view we are in (could be Gantt or Plan)
-            Utils.refreshCurrentView();
+            // Refresh entire page as requested to ensure full consistency
+            setTimeout(() => {
+                window.location.reload();
+            }, 200);
 
         } else {
             console.error("Save Error:", res);
