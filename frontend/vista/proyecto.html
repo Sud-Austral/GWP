@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <script src="../../../script/router.js"></script>
+    <script src="../../../script/api.js"></script>
+    <script src="../../../script/utils.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geoportal Municipal - Algarrobo</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#ec4899',
+                        accent: '#8b5cf6',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="stylesheet" href="styles/admin-styles.css">
+
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #f8fafc;
+            background-image:
+                radial-gradient(at 0% 0%, hsla(253, 16%, 95%, 1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(225, 39%, 95%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(339, 49%, 95%, 1) 0, transparent 50%);
+            color: #1e293b;
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-modern {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+            border: 1px solid rgba(241, 245, 249, 1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-modern::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card-modern:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-modern:hover::after {
+            opacity: 1;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(8px);
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.3s;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 1.5rem;
+            width: 95%;
+            max-width: 1400px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .close-btn {
+            font-size: 1.5rem;
+            color: #94a3b8;
+            background: #f1f5f9;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .close-btn:hover {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        input:not([type="checkbox"]),
+        textarea,
+        select {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            width: 100%;
+            transition: all 0.2s;
+            background-color: #f8fafc;
+        }
+
+        input:not([type="checkbox"]):focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #6366f1;
+            background-color: white;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        fieldset {
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            background: #ffffff;
+        }
+
+        legend {
+            font-weight: 600;
+            color: #6366f1;
+            padding: 0 0.5rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: #334155;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        input[type="checkbox"] {
+            width: 1.25rem;
+            height: 1.25rem;
+            accent-color: #6366f1;
+            cursor: pointer;
+        }
+
+        .table-container {
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+            background: white;
+            border: 1px solid #f1f5f9;
+        }
+
+        th {
+            background-color: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            padding: 1rem 1.5rem;
+        }
+
+        td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .status-badge {
+            padding: 0.35rem 0.85rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.025em;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transform: translateX(120%);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 2000;
+            border-left: 5px solid #6366f1;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-color: #10b981;
+        }
+
+        .toast.error {
+            border-color: #ef4444;
+        }
+
+        .toast.warning {
+            border-color: #f59e0b;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .loading {
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .toggle-column {
+            display: none;
+        }
+
+        .toggle-column-visible {
+            display: revert;
+        }
+
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        .details-table th,
+        .details-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .details-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+
+    <div id="headerRender">
+    </div>
+
+    <div class="flex">
+        <div id="asideRender">
+        </div>
+
+        <main class="flex-1 p-6">
+
+            <div id="projectsView" class="view-content">
+
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Gestión de Proyectos</h2>
+                    <p class="text-gray-600">Cartera de proyectos SECPLAC - Actualizado: <span
+                            id="lastUpdate">01/09/2025</span></p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+
+                    <div class="card-modern p-6 relative">
+                        <div class="flex items-center justify-between z-10 relative">
+                            <div>
+                                <p class="text-gray-500 text-sm font-medium uppercase tracking-wider">Total Proyectos
+                                </p>
+                                <p class="text-3xl font-bold text-gray-800 mt-1" id="totalProjects">0</p>
+                            </div>
+                            <div
+                                class="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl shadow-lg shadow-blue-500/30 text-white">
+                                <i class="fas fa-folder text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-modern p-6 relative">
+                        <div class="flex items-center justify-between z-10 relative">
+                            <div>
+                                <p class="text-gray-500 text-sm font-medium uppercase tracking-wider">En Ejecución</p>
+                                <p class="text-3xl font-bold text-gray-800 mt-1" id="executionProjects">0</p>
+                            </div>
+                            <div
+                                class="bg-gradient-to-br from-emerald-400 to-teal-500 p-3 rounded-xl shadow-lg shadow-emerald-500/30 text-white">
+                                <i class="fas fa-play-circle text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-modern p-6 relative">
+                        <div class="flex items-center justify-between z-10 relative">
+                            <div>
+                                <p class="text-gray-500 text-sm font-medium uppercase tracking-wider">Monto Total</p>
+                                <p class="text-3xl font-bold text-gray-800 mt-1" id="totalAmount">$0</p>
+                            </div>
+                            <div
+                                class="bg-gradient-to-br from-amber-400 to-orange-500 p-3 rounded-xl shadow-lg shadow-amber-500/30 text-white">
+                                <i class="fas fa-dollar-sign text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-modern p-6 relative">
+                        <div class="flex items-center justify-between z-10 relative">
+                            <div>
+                                <p class="text-gray-500 text-sm font-medium uppercase tracking-wider">Avance Promedio
+                                </p>
+                                <p class="text-3xl font-bold text-gray-800 mt-1" id="averageProgress">0%</p>
+                            </div>
+                            <div
+                                class="bg-gradient-to-br from-violet-500 to-purple-600 p-3 rounded-xl shadow-lg shadow-violet-500/30 text-white">
+                                <i class="fas fa-chart-line text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-6 mb-8 animate-fade-in" style="animation-delay: 0.1s;">
+                    <div class="flex flex-col md:flex-row gap-6 justify-between items-end">
+
+                        <div class="w-full md:w-1/3">
+                            <label for="searchInput" class="block text-sm font-semibold text-gray-700 mb-2">Buscar
+                                Proyecto</label>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <i
+                                        class="fas fa-search text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+                                </div>
+                                <input type="text" id="searchInput"
+                                    class="pl-11 block w-full rounded-xl border-gray-200 bg-gray-50/50 focus:bg-white transition-all shadow-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                                    placeholder="Nombre, código o sector...">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-1 w-full">
+
+                            <div>
+                                <label for="filterArea"
+                                    class="block text-sm font-semibold text-gray-700 mb-2">Área</label>
+                                <select id="filterArea"
+                                    class="block w-full rounded-xl border-gray-200 bg-gray-50/50 focus:bg-white cursor-pointer">
+                                    <option value="">Todas</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="filterFinancing"
+                                    class="block text-sm font-semibold text-gray-700 mb-2">Financiamiento</label>
+                                <select id="filterFinancing"
+                                    class="block w-full rounded-xl border-gray-200 bg-gray-50/50 focus:bg-white cursor-pointer">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="filterStatus"
+                                    class="block text-sm font-semibold text-gray-700 mb-2">Estado</label>
+                                <select id="filterStatus"
+                                    class="block w-full rounded-xl border-gray-200 bg-gray-50/50 focus:bg-white cursor-pointer">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="filterProfessional"
+                                    class="block text-sm font-semibold text-gray-700 mb-2">Profesional</label>
+                                <select id="filterProfessional"
+                                    class="block w-full rounded-xl border-gray-200 bg-gray-50/50 focus:bg-white cursor-pointer">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="w-full md:w-auto pb-0.5">
+                            <button onclick="clearFilters()"
+                                class="w-full md:w-auto h-[42px] px-6 bg-white border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm flex items-center justify-center gap-2">
+                                <i class="fas fa-sync-alt"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container animate-fade-in" style="animation-delay: 0.2s;">
+                    <div
+                        class="px-6 py-5 border-b border-gray-100 bg-white flex justify-between items-center flex-wrap gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-indigo-50 p-2 rounded-lg text-indigo-600">
+                                <i class="fas fa-list-ul"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-800">Lista de Proyectos</h3>
+                                <p id="proyectoCount" class="text-xs text-gray-500 font-medium mt-0.5">Cargando...</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <button id="toggleColumnsBtn" onclick="toggleColumns()"
+                                class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 hover:text-gray-900 transition text-sm font-medium">
+                                <i class="fas fa-eye mr-2"></i>Columnas
+                            </button>
+                            <button onclick="exportData()"
+                                class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition text-sm font-medium border border-emerald-100">
+                                <i class="fas fa-download mr-2"></i>Exportar
+                            </button>
+                            <button onclick="showAddProjectModal()"
+                                class="px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-500/30 text-sm font-medium flex items-center">
+                                <i class="fas fa-plus mr-2"></i>Nuevo Proyecto
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr>
+                                    <th class="toggle-column">N°</th>
+                                    <th>Nombre</th>
+                                    <th class="toggle-column">Área</th>
+                                    <th class="toggle-column">Financiamiento</th>
+                                    <th class="toggle-column">Monto</th>
+                                    <th class="toggle-column">Estado</th>
+                                    <th class="toggle-column">Avance</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projectsTableBody" class="bg-white">
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="proyectoModal" class="modal">
+        <div class="modal-content" style="max-width: 1400px;">
+            <div class="modal-header"
+                style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%); color: white; border-radius: 1.5rem 1.5rem 0 0; padding: 2rem;">
+                <div>
+                    <h2 class="modal-title" id="modalTitle"
+                        style="color: white; font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fas fa-folder-plus" id="modalIcon"></i>
+                        <span id="modalTitleText">Nuevo Proyecto</span>
+                    </h2>
+                    <p id="modalSubtitle" style="opacity: 0.9; font-size: 0.875rem;">Complete los campos para registrar
+                        un nuevo proyecto</p>
+                </div>
+                <button class="close-btn" onclick="closeModal()"
+                    style="color: white; font-size: 2rem; background: rgba(255,255,255,0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">&times;</button>
+            </div>
+            <div style="background: #fafbfc; padding: 2rem; max-height: 60vh; overflow-y: auto;">
+                <form id="proyectoForm">
+                    <fieldset>
+                        <legend>Información General</legend>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="nombre">Nombre del Proyecto *</label>
+                                <input type="text" id="nombre" name="nombre" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="codigo">Código</label>
+                                <input type="text" id="codigo" name="codigo">
+                            </div>
+                            <div class="form-group" style="display: none;">
+                                <label for="n_registro">N° Registro</label>
+                                <input type="number" id="n_registro" name="n_registro">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="area_id">Área</label>
+                                <select id="area_id" name="area_id">
+                                    <option value="">Seleccione Área</option>
+
+                                </select>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Estado y Avance</legend>
+                        <div class="form-grid">
+
+                            <div class="form-group">
+                                <label for="estado_proyecto_id">Estado Proyecto</label>
+                                <select id="estado_proyecto_id" name="estado_proyecto_id">
+                                    <option value="">Seleccione Estado</option>
+
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="etapa_proyecto_id">Etapa Proyecto</label>
+                                <select id="etapa_proyecto_id" name="etapa_proyecto_id">
+                                    <option value="">Seleccione Etapa</option>
+
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="estado_postulacion_id">Estado Postulación</label>
+                                <select id="estado_postulacion_id" name="estado_postulacion_id">
+                                    <option value="">Seleccione Estado</option>
+
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="avance_total_porcentaje">Avance Total (%)</label>
+                                <input type="number" id="avance_total_porcentaje" name="avance_total_porcentaje"
+                                    step="0.01" min="0" max="100">
+                            </div>
+                            <div class="form-group">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="es_prioridad" name="es_prioridad" value="SI">
+                                    <label for="es_prioridad" style="margin-bottom: 0;">¿Es Prioridad?</label>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Financiamiento</legend>
+                        <div class="form-grid">
+
+                            <div class="form-group">
+                                <label for="financiamiento_id">Financiamiento</label>
+                                <select id="financiamiento_id" name="financiamiento_id">
+                                    <option value="">Seleccione Financiamiento</option>
+
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="monto">Monto ($) </label>
+                                <input type="number" id="monto" name="monto" step="1" min="0">
+                            </div>
+                            <div class="form-group">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="financiamiento_municipal" name="financiamiento_municipal"
+                                        value="SI">
+                                    <label for="financiamiento_municipal" style="margin-bottom: 0;">¿Financiamiento
+                                        Municipal?</label>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Fechas y Plazos</legend>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="anno_elaboracion">Año Elaboración</label>
+                                <input type="number" id="anno_elaboracion" name="anno_elaboracion" min="2000"
+                                    max="2100">
+                            </div>
+                            <div class="form-group">
+                                <label for="anno_ejecucion">Año Ejecución</label>
+                                <input type="number" id="anno_ejecucion" name="anno_ejecucion" min="2000" max="2100">
+                            </div>
+                            <div class="form-group">
+                                <label for="fecha_postulacion">Fecha Postulación</label>
+                                <input type="date" id="fecha_postulacion" name="fecha_postulacion">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="fecha_actualizacion">Fecha Actualización</label>
+                                <input type="date" id="fecha_actualizacion" name="fecha_actualizacion">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Ubicación y Territorio</legend>
+                        <div class="form-grid">
+
+                            <div class="form-group">
+                                <label for="lineamiento_estrategico_id">Lineamiento Estratégico</label>
+                                <select id="lineamiento_estrategico_id" name="lineamiento_estrategico_id">
+                                    <option value="">Seleccione Lineamiento</option>
+
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="sector_id">Sector</label>
+                                <select id="sector_id" name="sector_id">
+                                    <option value="">Seleccione Sector</option>
+
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="unidad_vecinal">Unidad Vecinal</label>
+                                <input type="text" id="unidad_vecinal" name="unidad_vecinal">
+                            </div>
+                            <div class="form-group">
+                                <label for="latitud">Latitud</label>
+                                <input type="number" id="latitud" name="latitud" step="any">
+                            </div>
+                            <div class="form-group">
+                                <label for="longitud">Longitud</label>
+                                <input type="number" id="longitud" name="longitud" step="any">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Profesionales a Cargo</legend>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="profesional_1">Profesional 1</label>
+                                <input type="text" id="profesional_1" name="profesional_1">
+                            </div>
+                            <div class="form-group">
+                                <label for="profesional_2">Profesional 2</label>
+                                <input type="text" id="profesional_2" name="profesional_2">
+                            </div>
+                            <div class="form-group">
+                                <label for="profesional_3">Profesional 3</label>
+                                <input type="text" id="profesional_3" name="profesional_3">
+                            </div>
+                            <div class="form-group">
+                                <label for="profesional_4">Profesional 4</label>
+                                <input type="text" id="profesional_4" name="profesional_4">
+                            </div>
+                            <div class="form-group">
+                                <label for="profesional_5">Profesional 5</label>
+                                <input type="text" id="profesional_5" name="profesional_5">
+                            </div>
+                            <div class="form-group">
+                                <label for="dupla_profesionales">Dupla Profesionales</label>
+                                <input type="text" id="dupla_profesionales" name="dupla_profesionales">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Documentación y Técnica</legend>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="documentos">Documentos (Estado)</label>
+                                <input type="text" id="documentos" name="documentos">
+                            </div>
+                            <div class="form-group">
+                                <label for="planimetrias">Planimetrías (Estado)</label>
+                                <input type="text" id="planimetrias" name="planimetrias">
+                            </div>
+                            <div class="form-group">
+                                <label for="topografia">Topografía (Estado)</label>
+                                <input type="text" id="topografia" name="topografia">
+                            </div>
+                            <div class="form-group">
+                                <label for="ingenieria">Ingeniería</label>
+                                <input type="text" id="ingenieria" name="ingenieria">
+                            </div>
+                            <div class="form-group">
+                                <label for="perfil_tecnico_economico">Perfil Técnico Económico</label>
+                                <input type="text" id="perfil_tecnico_economico" name="perfil_tecnico_economico">
+                            </div>
+                            <div class="form-group">
+                                <label for="aprobacion_dom">Aprobación DOM</label>
+                                <input type="text" id="aprobacion_dom" name="aprobacion_dom">
+                            </div>
+                            <div class="form-group">
+                                <label for="aprobacion_serviu">Aprobación SERVIU</label>
+                                <input type="text" id="aprobacion_serviu" name="aprobacion_serviu">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset style="display: none;">
+                        <legend>Observaciones</legend>
+                        <div class="form-group">
+                            <label for="observaciones">Observaciones Generales</label>
+                            <textarea id="observaciones" name="observaciones" rows="4"></textarea>
+                        </div>
+                    </fieldset>
+                </form>
+            </div>
+            <div class="modal-footer"
+                style="background: #f8f9fa; border-radius: 0 0 1.5rem 1.5rem; padding: 1.5rem 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button"
+                    class="px-6 py-3 rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 text-white hover:from-slate-800 hover:to-slate-950 font-medium transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
+                    onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                </button>
+                <button type="submit" form="proyectoForm"
+                    class="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 font-medium transition-all shadow-lg shadow-indigo-500/30 hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
+                    id="submitBtn">
+                    <i class="fas fa-save"></i>
+                    <span id="submitText">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="viewProjectModal" class="modal">
+        <div class="modal-content" style="max-width: 1400px;">
+            <div class="modal-header"
+                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 1.5rem 1.5rem 0 0; padding: 2rem;">
+                <div>
+                    <h2 class="modal-title"
+                        style="color: white; font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem;">Detalles
+                        del
+                        Proyecto</h2>
+                    <p style="opacity: 0.9; font-size: 0.875rem;">Información completa y detallada</p>
+                </div>
+                <button class="close-btn" onclick="closeViewModal()"
+                    style="color: white; font-size: 2rem; background: rgba(255,255,255,0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">&times;</button>
+            </div>
+            <div id="viewProjectDetails" class="p-6" style="background: #fafbfc;">
+
+            </div>
+            <div class="modal-footer"
+                style="background: #f8f9fa; border-radius: 0 0 1.5rem 1.5rem; padding: 1.5rem 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button"
+                    class="px-6 py-3 rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 text-white hover:from-slate-800 hover:to-slate-950 font-medium transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
+                    onclick="closeViewModal()">
+                    <i class="fas fa-times"></i>
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script src="../../../script/layout.js"></script>
+    <script src="../../../script/help.js"></script>
+    <script>document.addEventListener('DOMContentLoaded', () => createHelpButton('proyecto'));</script>
+
+    <script>
+
+        let proyectos = [];
+        let catalogData = {
+            areas: [],
+            financiamientos: [],
+            estados_proyecto: [],
+            etapas_proyecto: [],
+            estados_postulacion: [],
+            sectores: [],
+            lineamientos_estrategicos: []
+        };
+        let editingId = null;
+        let columnsVisible = false;
+
+        async function loadCatalogData() {
+            try {
+                const resources = [
+                    'areas', 'financiamientos', 'estados_proyecto',
+                    'etapas_proyecto', 'estados_postulacion', 'sectores',
+                    'lineamientos_estrategicos'
+                ];
+
+                const results = await Promise.all(
+                    resources.map(res => api.get(`/${res}`).catch(() => []))
+                );
+
+                resources.forEach((res, index) => {
+                    catalogData[res] = results[index].sort((a, b) =>
+                        (a.nombre || '').localeCompare(b.nombre || '')
+                    );
+                });
+
+                populateFormSelects();
+                populateFilterSelects();
+            } catch (error) {
+                console.error('Error cargando catálogos:', error);
+                showToast('Error al sincronizar datos', 'error');
+            }
+        }
+
+        function populateFilterSelects() {
+
+            populateSelectOptions('filterArea', catalogData.areas.map(a => a.nombre), 'Todas');
+            populateSelectOptions('filterFinancing', catalogData.financiamientos.map(f => f.nombre), 'Todos');
+            populateSelectOptions('filterStatus', catalogData.estados_proyecto.map(e => e.nombre), 'Todos');
+
+        }
+
+        function populateFormSelects() {
+
+            const fillSelect = (elementId, data, defaultText) => {
+                const select = document.getElementById(elementId);
+                if (!select) return;
+
+                const currentVal = select.value;
+
+                select.innerHTML = `<option value="">${defaultText}</option>`;
+                data.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = item.nombre;
+                    select.appendChild(option);
+                });
+
+                if (currentVal) select.value = currentVal;
+            };
+
+            fillSelect('area_id', catalogData.areas, 'Seleccione Área');
+            fillSelect('financiamiento_id', catalogData.financiamientos, 'Seleccione Financiamiento');
+            fillSelect('estado_proyecto_id', catalogData.estados_proyecto, 'Seleccione Estado');
+            fillSelect('etapa_proyecto_id', catalogData.etapas_proyecto, 'Seleccione Etapa');
+            fillSelect('estado_postulacion_id', catalogData.estados_postulacion, 'Seleccione Estado Postulación');
+            fillSelect('sector_id', catalogData.sectores, 'Seleccione Sector');
+            fillSelect('lineamiento_estrategico_id', catalogData.lineamientos_estrategicos, 'Seleccione Lineamiento');
+        }
+
+        function formatDateForInput(dateString) {
+            if (!dateString) return '';
+            if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+                return dateString;
+            }
+            const dateObj = new Date(dateString);
+            if (isNaN(dateObj.getTime())) return dateString;
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatDisplayDate(dateString) {
+            if (!dateString) return '-';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('es-CL', {
+                    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            checkLoginStatus();
+
+            loadCatalogData().then(() => {
+                loadProjects();
+            });
+
+            document.getElementById('searchInput').addEventListener('input', applyFilters);
+            document.getElementById('filterArea').addEventListener('change', applyFilters);
+            document.getElementById('filterFinancing').addEventListener('change', applyFilters);
+            document.getElementById('filterStatus').addEventListener('change', applyFilters);
+            document.getElementById('filterProfessional').addEventListener('change', applyFilters);
+
+            document.getElementById('proyectoForm').addEventListener('submit', handleSubmit);
+        });
+
+        async function loadProjects() {
+            try {
+                const tableBody = document.getElementById('projectsTableBody');
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-12">
+                            <div class="flex flex-col items-center justify-center">
+                                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
+                                <p class="text-gray-500 font-medium">Cargando proyectos...</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+
+                proyectos = await api.get('/proyectos');
+
+                proyectos.sort((a, b) => {
+                    const dateA = new Date(a.fecha_actualizacion || a.fecha_postulacion || 0);
+                    const dateB = new Date(b.fecha_actualizacion || b.fecha_postulacion || 0);
+                    const diff = dateB - dateA;
+                    if (diff !== 0) return diff;
+                    return (a.nombre || '').localeCompare(b.nombre || '');
+                });
+
+                updateFilterOptions();
+                applyFilters();
+
+                const today = new Date();
+                const formattedDate = today.toLocaleDateString('es-ES', {
+                    day: '2-digit', month: '2-digit', year: 'numeric'
+                });
+                document.getElementById('lastUpdate').textContent = formattedDate;
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error al cargar los proyectos', 'error');
+            }
+        }
+
+        function populateSelectOptions(selectElementId, optionsList, defaultLabel, currentValue) {
+            const select = document.getElementById(selectElementId);
+            const previousValue = select.value;
+            let html = `<option value="">${defaultLabel}</option>`;
+            optionsList.forEach(opt => {
+                html += `<option value="${opt}" ${opt === previousValue ? 'selected' : ''}>${opt}</option>`;
+            });
+            select.innerHTML = html;
+            if (previousValue && !optionsList.includes(previousValue)) {
+                select.value = "";
+            } else if (previousValue) {
+                select.value = previousValue;
+            }
+        }
+
+        function getProfessionalsFromProject(p) {
+            const profs = [
+                p.profesional_1,
+                p.profesional_2,
+                p.profesional_3,
+                p.profesional_4,
+                p.profesional_5
+            ].filter(Boolean);
+            return profs;
+        }
+
+        function updateFilterOptions() {
+            const selectedArea = document.getElementById('filterArea').value;
+            const selectedFinancing = document.getElementById('filterFinancing').value;
+            const selectedStatus = document.getElementById('filterStatus').value;
+            const selectedProfessional = document.getElementById('filterProfessional').value;
+
+            const dataForAreas = proyectos.filter(p => {
+                const profs = getProfessionalsFromProject(p);
+                const matchesPro = selectedProfessional === '' || profs.includes(selectedProfessional);
+                return matchesPro &&
+                    (selectedFinancing === '' || p.financiamiento_nombre === selectedFinancing) &&
+                    (selectedStatus === '' || p.estado_nombre === selectedStatus);
+            });
+            const uniqueAreas = [...new Set(dataForAreas.map(p => p.area_nombre).filter(Boolean))].sort();
+            populateSelectOptions('filterArea', uniqueAreas, 'Todas las áreas', selectedArea);
+
+            const dataForFinancing = proyectos.filter(p => {
+                const profs = getProfessionalsFromProject(p);
+                const matchesPro = selectedProfessional === '' || profs.includes(selectedProfessional);
+                return matchesPro &&
+                    (selectedArea === '' || p.area_nombre === selectedArea) &&
+                    (selectedStatus === '' || p.estado_nombre === selectedStatus);
+            });
+            const uniqueFinancing = [...new Set(dataForFinancing.map(p => p.financiamiento_nombre).filter(Boolean))].sort();
+            populateSelectOptions('filterFinancing', uniqueFinancing, 'Todo el financiamiento', selectedFinancing);
+
+            const dataForStatus = proyectos.filter(p => {
+                const profs = getProfessionalsFromProject(p);
+                const matchesPro = selectedProfessional === '' || profs.includes(selectedProfessional);
+                return matchesPro &&
+                    (selectedArea === '' || p.area_nombre === selectedArea) &&
+                    (selectedFinancing === '' || p.financiamiento_nombre === selectedFinancing);
+            });
+            const uniqueStatus = [...new Set(dataForStatus.map(p => p.estado_nombre).filter(Boolean))].sort();
+            populateSelectOptions('filterStatus', uniqueStatus, 'Todos los estados', selectedStatus);
+
+            const dataForProfessionals = proyectos.filter(p =>
+                (selectedArea === '' || p.area_nombre === selectedArea) &&
+                (selectedFinancing === '' || p.financiamiento_nombre === selectedFinancing) &&
+                (selectedStatus === '' || p.estado_nombre === selectedStatus)
+            );
+            const allProfessionalsList = dataForProfessionals.flatMap(getProfessionalsFromProject);
+            const uniqueProfessionals = [...new Set(allProfessionalsList)].sort();
+            populateSelectOptions('filterProfessional', uniqueProfessionals, 'Todos los profesionales', selectedProfessional);
+        }
+
+        function applyFilters() {
+            updateFilterOptions();
+
+            const selectedArea = document.getElementById('filterArea').value;
+            const selectedFinancing = document.getElementById('filterFinancing').value;
+            const selectedStatus = document.getElementById('filterStatus').value;
+            const selectedProfessional = document.getElementById('filterProfessional').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            const filteredData = proyectos.filter(proyecto => {
+                const matchesSearch =
+                    (proyecto.nombre && proyecto.nombre.toLowerCase().includes(searchTerm)) ||
+                    (proyecto.codigo && proyecto.codigo.toLowerCase().includes(searchTerm)) ||
+                    (proyecto.sector_nombre && proyecto.sector_nombre.toLowerCase().includes(searchTerm));
+
+                const matchesArea = selectedArea === '' || proyecto.area_nombre === selectedArea;
+                const matchesFinancing = selectedFinancing === '' || proyecto.financiamiento_nombre === selectedFinancing;
+                const matchesStatus = selectedStatus === '' || proyecto.estado_nombre === selectedStatus;
+
+                const projectProfessionals = getProfessionalsFromProject(proyecto);
+                const matchesProfessional = selectedProfessional === '' || projectProfessionals.includes(selectedProfessional);
+
+                return matchesSearch && matchesArea && matchesFinancing && matchesStatus && matchesProfessional;
+            });
+
+            renderProyectos(filteredData);
+            updateKPIs(filteredData);
+            updateCount(filteredData.length);
+        }
+
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterArea').value = '';
+            document.getElementById('filterFinancing').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterProfessional').value = '';
+            applyFilters();
+        }
+
+        function renderSkeleton(container, rows = 5) {
+            container.innerHTML = Array(rows).fill(0).map(() => `
+                <tr class="animate-pulse">
+                    ${Array(8).fill(0).map(() => `
+                        <td class="py-4 px-4">
+                            <div class="h-4 bg-gray-200 rounded w-full"></div>
+                        </td>
+                    `).join('')}
+                </tr>
+            `).join('');
+        }
+
+        function renderProyectos(proyectosToRender) {
+            const tableBody = document.getElementById('projectsTableBody');
+            if (proyectosToRender.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-12">
+                            <div class="flex flex-col items-center justify-center text-gray-400">
+                                <i class="fas fa-folder-open text-5xl mb-4 text-gray-300"></i>
+                                <p class="text-lg font-medium text-gray-500">No se encontraron proyectos</p>
+                                <p class="text-sm">Intenta ajustar los filtros de búsqueda</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const visibilityClass = columnsVisible ? 'toggle-column-visible' : '';
+
+            tableBody.innerHTML = proyectosToRender.map(proyecto => {
+                let statusClass = utils.getStatusClass(proyecto.estado_nombre || '');
+                let statusText = proyecto.estado_nombre || 'Sin Estado';
+                let badgeStyle = proyecto.estado_color ? `background-color: ${proyecto.estado_color}; color: white;` : '';
+
+                let progressClass = '';
+                const progress = proyecto.avance_total_porcentaje ? parseFloat(proyecto.avance_total_porcentaje) : 0;
+                const displayProgress = (progress > 1 ? progress : progress * 100);
+
+                if (displayProgress < 25) progressClass = 'bg-rose-500';
+                else if (displayProgress < 50) progressClass = 'bg-amber-500';
+                else if (displayProgress < 75) progressClass = 'bg-blue-500';
+                else progressClass = 'bg-emerald-500';
+
+                return `
+                    <tr class="hover:bg-indigo-50/30 transition-colors duration-150 group">
+                        <td class="toggle-column ${visibilityClass} font-medium text-gray-400 text-xs text-center">${proyecto.id || ''}</td>
+                        <td class="font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors">${proyecto.nombre || ''}</td>
+                        <td class="text-gray-600 toggle-column ${visibilityClass}">${proyecto.area_nombre || ''}</td>
+                        <td class="text-gray-600 toggle-column ${visibilityClass}">${proyecto.financiamiento_nombre || ''}</td>
+                        <td class="font-mono text-gray-600 toggle-column ${visibilityClass}">${utils.formatCurrency(proyecto.monto)}</td>
+                        <td class="toggle-column ${visibilityClass}">
+                            <span class="status-badge ${statusClass}" style="${badgeStyle}">
+                                ${statusText}
+                            </span>
+                        </td>
+                        <td class="toggle-column ${visibilityClass}">
+                            <div class="flex items-center gap-3">
+                                <div class="w-full bg-gray-100 rounded-full h-2 shadow-inner overflow-hidden">
+                                    <div class="${progressClass} h-2 rounded-full transition-all duration-500 relative" style="width: ${displayProgress}%">
+                                        <div class="absolute inset-0 bg-white/20"></div>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-bold text-gray-500 w-9 text-right">${displayProgress.toFixed(0)}%</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="flex items-center gap-1">
+                                <button onclick="viewProject(${proyecto.id})" class="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors tooltip" title="Ver detalles">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button onclick="editProject(${proyecto.id})" class="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors tooltip" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteProject(${proyecto.id})" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors tooltip" title="Eliminar">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateKPIs(proyectosData) {
+            document.getElementById('totalProjects').textContent = proyectosData.length;
+
+            const executionCount = proyectosData.filter(p => p.estado_nombre === 'Ejecución').length;
+            document.getElementById('executionProjects').textContent = executionCount;
+            const totalAmount = proyectosData.reduce((sum, p) => sum + (parseFloat(p.monto) || 0), 0);
+            document.getElementById('totalAmount').textContent = utils.formatCurrency(totalAmount);
+            const avgProgress = proyectosData.length > 0
+                ? proyectosData.reduce((sum, p) => sum + (parseFloat(p.avance_total_porcentaje) || 0), 0) / proyectosData.length
+                : 0;
+            document.getElementById('averageProgress').textContent = (avgProgress > 1 ? avgProgress : avgProgress * 100).toFixed(1) + '%';
+        }
+
+        function toggleColumns() {
+            const toggleElements = document.querySelectorAll('.toggle-column');
+            const toggleBtn = document.getElementById('toggleColumnsBtn');
+            columnsVisible = !columnsVisible;
+
+            toggleElements.forEach(el => {
+                el.classList.toggle('toggle-column-visible', columnsVisible);
+            });
+
+            if (columnsVisible) {
+                toggleBtn.innerHTML = '<i class="fas fa-eye-slash mr-2"></i>Mostrar menos';
+            } else {
+                toggleBtn.innerHTML = '<i class="fas fa-eye mr-2"></i>Mostrar más';
+            }
+        }
+
+        function updateCount(count) {
+            const countElement = document.getElementById('proyectoCount');
+            if (countElement) {
+                countElement.textContent = `${count} proyecto${count !== 1 ? 's' : ''} encontrados`;
+            }
+        }
+
+        function viewProject(id) {
+            const proyecto = proyectos.find(p => p.id === id);
+            if (!proyecto) {
+                showToast('Proyecto no encontrado', 'error');
+                return;
+            }
+
+            const detailsContainer = document.getElementById('viewProjectDetails');
+            detailsContainer.innerHTML = '';
+
+            const labels = {
+                id: "ID", nombre: "Nombre del Proyecto", codigo: "Código", n_registro: "N° de Registro",
+                area_nombre: "Área", estado_nombre: "Estado del Proyecto", etapa_nombre: "Etapa del Proyecto",
+                estado_postulacion_nombre: "Estado de Postulación", avance_total_decimal: "Avance Total (Decimal)",
+                avance_total_porcentaje: "Avance Total (%)", es_prioridad: "¿Es Prioridad?",
+                financiamiento_nombre: "Financiamiento", financiamiento_municipal: "¿Financiamiento Municipal?",
+                monto: "Monto", anno_elaboracion: "Año de Elaboración", anno_ejecucion: "Año de Ejecución",
+                fecha_postulacion: "Fecha de Postulación",
+                lineamiento_nombre: "Lineamiento Estratégico", sector_nombre: "Sector",
+                unidad_vecinal: "Unidad Vecinal", latitud: "Latitud", longitud: "Longitud",
+                profesional_1: "Profesional 1", profesional_2: "Profesional 2",
+                dupla_profesionales: "Dupla de Profesionales", documentos: "Documentos (Estado)",
+                planimetrias: "Planimetrías (Estado)", topografia: "Topografía (Estado)",
+                ingenieria: "Ingeniería", perfil_tecnico_economico: "Perfil Técnico Económico",
+                aprobacion_dom: "Aprobación DOM", aprobacion_serviu: "Aprobación SERVIU",
+                observaciones: "Observaciones Generales"
+            };
+
+            let html = `
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    
+                    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 border-b border-gray-200">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h3 class="text-2xl font-bold text-gray-900 mb-2">${proyecto.nombre || 'Sin nombre'}</h3>
+                                <div class="flex flex-wrap gap-3">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                                        <i class="fas fa-hashtag mr-1.5"></i> ${proyecto.codigo || 'N/A'}
+                                    </span>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                        <i class="fas fa-folder mr-1.5"></i> ${proyecto.area_nombre || 'Sin área'}
+                                    </span>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                        <i class="fas fa-tasks mr-1.5"></i> ${proyecto.estado_nombre || 'Sin estado'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm text-gray-500 mb-1">Monto Total</div>
+                                <div class="text-2xl font-bold text-indigo-600">${utils.formatCurrency(proyecto.monto)}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            
+                            <div class="space-y-6">
+                                
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                        <i class="fas fa-info-circle text-indigo-500"></i>
+                                        Información General
+                                    </h4>
+                                    <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">N° de Registro:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.n_registro || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Etapa del Proyecto:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.etapa_nombre || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Estado de Postulación:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.estado_postulacion_nombre || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Avance Total:</span>
+                                            <span class="text-sm font-semibold text-indigo-600">${proyecto.avance_total_porcentaje ? `${(parseFloat(proyecto.avance_total_porcentaje) > 1 ? parseFloat(proyecto.avance_total_porcentaje) : parseFloat(proyecto.avance_total_porcentaje) * 100).toFixed(1)}%` : '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">¿Es Prioridad?:</span>
+                                            <span class="text-sm font-semibold ${proyecto.es_prioridad === 'SI' ? 'text-red-600' : 'text-gray-900'}">
+                                                ${proyecto.es_prioridad === 'SI' ? '✓ Sí' : 'No'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                        <i class="fas fa-dollar-sign text-green-500"></i>
+                                        Financiamiento
+                                    </h4>
+                                    <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Tipo:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.financiamiento_nombre || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Financiamiento Municipal:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.financiamiento_municipal || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Año de Elaboración:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.anno_elaboracion || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Año de Ejecución:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.anno_ejecucion || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2">
+                                            <span class="text-sm font-medium text-gray-600">Fecha de Postulación:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.fecha_postulacion ? formatDisplayDate(proyecto.fecha_postulacion) : '-'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                        <i class="fas fa-map-marker-alt text-red-500"></i>
+                                        Ubicación y Territorio
+                                    </h4>
+                                    <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Lineamiento Estratégico:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.lineamiento_nombre || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Sector:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.sector_nombre || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Unidad Vecinal:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.unidad_vecinal || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Coordenadas:</span>
+                                            <span class="text-sm font-mono text-gray-900">${proyecto.latitud && proyecto.longitud ? `${proyecto.latitud}, ${proyecto.longitud}` : '-'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-6">
+                                
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                        <i class="fas fa-users text-blue-500"></i>
+                                        Profesionales a Cargo
+                                    </h4>
+                                    <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Profesional 1:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.profesional_1 || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Profesional 2:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.profesional_2 || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Profesional 3:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.profesional_3 || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Profesional 4:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.profesional_4 || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Profesional 5:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.profesional_5 || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2">
+                                            <span class="text-sm font-medium text-gray-600">Dupla Profesionales:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.dupla_profesionales || '-'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                        <i class="fas fa-file-alt text-purple-500"></i>
+                                        Documentación y Técnica
+                                    </h4>
+                                    <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Documentos:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.documentos || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Planimetrías:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.planimetrias || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Topografía:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.topografia || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Ingeniería:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.ingenieria || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Perfil Técnico Económico:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.perfil_tecnico_economico || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-sm font-medium text-gray-600">Aprobación DOM:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.aprobacion_dom || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between py-2">
+                                            <span class="text-sm font-medium text-gray-600">Aprobación SERVIU:</span>
+                                            <span class="text-sm font-semibold text-gray-900">${proyecto.aprobacion_serviu || '-'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                ${proyecto.observaciones ? `
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                        <i class="fas fa-comment-alt text-amber-500"></i>
+                                        Observaciones Generales
+                                    </h4>
+                                    <div class="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                                        <p class="text-sm text-gray-700 leading-relaxed">${proyecto.observaciones}</p>
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const hitos = proyecto.hitos_lista || [];
+            html += `
+                <div class="mt-8">
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="bg-gradient-to-r from-blue-500 to-cyan-500 p-5">
+                            <h3 class="text-xl font-bold text-white flex items-center gap-3">
+                                <div class="bg-white bg-opacity-20 p-2 rounded-lg">
+                                    <i class="fas fa-flag-checkered"></i>
+                                </div>
+                                Hitos del Proyecto
+                                <span class="ml-auto bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm font-medium">${hitos.length} hito${hitos.length !== 1 ? 's' : ''}</span>
+                            </h3>
+                        </div>
+                        <div class="p-6">
+                            ${hitos.length > 0 ? `
+                                <div class="space-y-4">
+                                    ${hitos.map((h, index) => `
+                                        <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-5 border border-blue-100 hover:shadow-md transition-all">
+                                            <div class="flex items-start gap-4">
+                                                <div class="flex-shrink-0">
+                                                    <div class="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-lg">
+                                                        ${index + 1}
+                                                    </div>
+                                                </div>
+                                                <div class="flex-1 space-y-2">
+                                                    <div class="flex items-center gap-3 flex-wrap">
+                                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-600 text-white">
+                                                            <i class="fas fa-bookmark mr-1.5"></i>
+                                                            ${h.tipo_hito || 'Sin tipo'}
+                                                        </span>
+                                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-700 border border-gray-300">
+                                                            <i class="fas fa-calendar mr-1.5"></i>
+                                                            ${formatDisplayDate(h.fecha)}
+                                                        </span>
+                                                    </div>
+                                                    ${h.observacion ? `
+                                                        <div class="bg-white rounded-lg p-3 mt-2">
+                                                            <p class="text-sm text-gray-700 leading-relaxed">${h.observacion}</p>
+                                                        </div>
+                                                    ` : '<p class="text-sm text-gray-500 italic">Sin observación</p>'}
+                                                    ${h.creado_por ? `
+                                                        <div class="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                                                            <i class="fas fa-user"></i>
+                                                            Creado por: <span class="font-medium">${h.creado_por}</span>
+                                                        </div>
+                                                    ` : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : `
+                                <div class="text-center py-12">
+                                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 text-gray-400 mb-4">
+                                        <i class="fas fa-flag-checkered text-2xl"></i>
+                                    </div>
+                                    <p class="text-gray-500 font-medium">No hay hitos registrados</p>
+                                    <p class="text-gray-400 text-sm mt-1">Los hitos del proyecto aparecerán aquí</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const observaciones = proyecto.observaciones_lista || [];
+            html += `
+                <div class="mt-6">
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="bg-gradient-to-r from-orange-500 to-amber-500 p-5">
+                            <h3 class="text-xl font-bold text-white flex items-center gap-3">
+                                <div class="bg-white bg-opacity-20 p-2 rounded-lg">
+                                    <i class="fas fa-comments"></i>
+                                </div>
+                                Observaciones del Proyecto
+                                <span class="ml-auto bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm font-medium">${observaciones.length} observación${observaciones.length !== 1 ? 'es' : ''}</span>
+                            </h3>
+                        </div>
+                        <div class="p-6">
+                            ${observaciones.length > 0 ? `
+                                <div class="space-y-4">
+                                    ${observaciones.map((o, index) => `
+                                        <div class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-5 border border-orange-100 hover:shadow-md transition-all">
+                                            <div class="flex items-start gap-4">
+                                                <div class="flex-shrink-0">
+                                                    <div class="w-12 h-12 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold text-lg">
+                                                        ${index + 1}
+                                                    </div>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <div class="flex items-center gap-3 mb-3">
+                                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-700 border border-gray-300">
+                                                            <i class="fas fa-calendar mr-1.5"></i>
+                                                            ${formatDisplayDate(o.fecha)}
+                                                        </span>
+                                                        ${o.creado_por ? `
+                                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-600 text-white">
+                                                                <i class="fas fa-user mr-1.5"></i>
+                                                                ${o.creado_por}
+                                                            </span>
+                                                        ` : ''}
+                                                    </div>
+                                                    <div class="bg-white rounded-lg p-4">
+                                                        <p class="text-sm text-gray-800 leading-relaxed">${o.observacion || 'Sin observación'}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : `
+                                <div class="text-center py-12">
+                                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 text-gray-400 mb-4">
+                                        <i class="fas fa-comments text-2xl"></i>
+                                    </div>
+                                    <p class="text-gray-500 font-medium">No hay observaciones registradas</p>
+                                    <p class="text-gray-400 text-sm mt-1">Las observaciones del proyecto aparecerán aquí</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            html += `
+                <div class="mt-8">
+                    <div class="bg-gradient-to-r from-gray-700 to-gray-900 rounded-2xl shadow-lg p-6 text-white">
+                        <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                            <i class="fas fa-shield-alt"></i>
+                            Auditoría del Sistema
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="bg-white bg-opacity-10 rounded-xl p-4 backdrop-blur">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                                        <i class="fas fa-user-plus"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs opacity-75">Creado por</div>
+                                        <div class="font-semibold">${proyecto.user_nombre || 'Desconocido'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white bg-opacity-10 rounded-xl p-4 backdrop-blur">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                                        <i class="fas fa-user-edit"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs opacity-75">Actualizado por</div>
+                                        <div class="font-semibold">${proyecto.actualizado_por_nombre || 'Desconocido'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white bg-opacity-10 rounded-xl p-4 backdrop-blur">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs opacity-75">Última actualización</div>
+                                        <div class="font-semibold text-sm">${formatDisplayDate(proyecto.fecha_actualizacion)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            detailsContainer.innerHTML = html;
+            document.getElementById('viewProjectModal').classList.add('active');
+        }
+
+        function editProject(id) {
+            const proyecto = proyectos.find(p => p.id === id);
+            if (proyecto) openModal(proyecto);
+        }
+
+        async function deleteProject(id) {
+            if (!confirm('¿Está seguro de que desea eliminar este proyecto? Esta acción no se puede deshacer.')) return;
+
+            try {
+
+                if (typeof showLoading === 'function') showLoading(true, 'Eliminando...');
+
+                await api.delete(`/proyectos/${id}`);
+
+                showToast('Proyecto eliminado exitosamente', 'success');
+                loadProjects();
+            } catch (error) {
+                console.error('Error:', error);
+                showToast(error.message || 'Error al eliminar el proyecto', 'error');
+            } finally {
+                if (typeof showLoading === 'function') showLoading(false);
+            }
+        }
+
+        function exportData() {
+            showToast('Función de exportación en desarrollo', 'warning');
+        }
+
+        function showAddProjectModal() {
+            openModal();
+        }
+
+        function openModal(proyecto = null) {
+
+            if (catalogData.areas.length === 0) {
+                populateFormSelects();
+            }
+
+            const modal = document.getElementById('proyectoModal');
+            const form = document.getElementById('proyectoForm');
+            const titleText = document.getElementById('modalTitleText');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalSubtitle = document.getElementById('modalSubtitle');
+            const submitText = document.getElementById('submitText');
+
+            if (proyecto) {
+
+                titleText.textContent = 'Editar Proyecto';
+                modalIcon.className = 'fas fa-edit';
+                modalSubtitle.textContent = 'Modifique los campos necesarios para actualizar el proyecto';
+                submitText.textContent = 'Actualizar';
+                editingId = proyecto.id;
+
+                form.reset();
+
+                Object.keys(proyecto).forEach(key => {
+                    const input = form.elements[key];
+                    if (input) {
+                        if (input.type === 'checkbox') {
+                            input.checked = (proyecto[key] === 'SI' || proyecto[key] === true);
+                        } else if (input.type === 'date') {
+                            input.value = formatDateForInput(proyecto[key]);
+                        } else {
+
+                            input.value = proyecto[key] || '';
+                        }
+                    }
+                });
+            } else {
+
+                titleText.textContent = 'Nuevo Proyecto';
+                modalIcon.className = 'fas fa-folder-plus';
+                modalSubtitle.textContent = 'Complete los campos para registrar un nuevo proyecto';
+                submitText.textContent = 'Guardar';
+                editingId = null;
+                form.reset();
+            }
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('proyectoModal').classList.remove('active');
+            document.getElementById('proyectoForm').reset();
+            editingId = null;
+        }
+
+        function closeViewModal() {
+            document.getElementById('viewProjectModal').classList.remove('active');
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const data = utils.serializeForm(e.target);
+
+            Object.keys(data).forEach(key => {
+                const element = e.target.elements[key];
+                if (element && element.type === 'checkbox') {
+                    data[key] = element.checked ? 'SI' : 'NO';
+                }
+                if (data[key] === '' || data[key] === null) delete data[key];
+            });
+
+            const cleanup = [
+                'user_id', 'actualizado_por', 'fecha_actualizacion',
+                'user_nombre', 'actualizado_por_nombre',
+                'area_nombre', 'financiamiento_nombre', 'estado_nombre',
+                'etapa_nombre', 'estado_postulacion_nombre', 'sector_nombre',
+                'lineamiento_nombre'
+            ];
+            cleanup.forEach(k => delete data[k]);
+
+            const submitBtn = document.getElementById('submitBtn');
+            const submitText = document.getElementById('submitText');
+
+            try {
+                submitBtn.disabled = true;
+                submitText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Procesando...';
+
+                if (editingId) {
+                    await api.put(`/proyectos/${editingId}`, data);
+                } else {
+                    await api.post('/proyectos', data);
+                }
+
+                showToast(editingId ? 'Proyecto actualizado' : 'Proyecto creado');
+                closeModal();
+                loadProjects();
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitText.textContent = 'Guardar';
+            }
+        }
+
+        window.onclick = function (event) {
+            const editModal = document.getElementById('proyectoModal');
+            const viewModal = document.getElementById('viewProjectModal');
+            if (event.target === editModal) closeModal();
+            if (event.target === viewModal) closeViewModal();
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') { closeModal(); closeViewModal(); }
+        });
+    </script>
+</body>
+
+</html>

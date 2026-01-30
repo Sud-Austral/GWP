@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GWP - Dashboard</title>
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fas fa-layer-group"></i>
+                <span>GWP Admin</span>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-view="plan">
+                    <i class="fas fa-tasks"></i> Plan Maestro
+                </a>
+                <a href="#" class="nav-item" data-view="gantt">
+                    <i class="fas fa-chart-gantt"></i> Carta Gantt
+                </a>
+                <a href="#" class="nav-item" data-view="calendar">
+                    <i class="far fa-calendar-alt"></i> Calendario
+                </a>
+                <a href="#" class="nav-item" data-view="hitos">
+                    <i class="fas fa-flag"></i> Hitos
+                </a>
+                <a href="#" class="nav-item" data-view="documents">
+                    <i class="fas fa-folder-open"></i> Documentos
+                </a>
+                <div class="nav-divider"></div>
+                <a href="#" class="nav-item" data-view="users">
+                    <i class="fas fa-users"></i> Usuarios
+                </a>
+            </nav>
+
+            <div class="user-profile">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="user-details">
+                    <span class="user-name" id="userNameDisplay">Cargando...</span>
+                    <button class="btn-text" id="btnLogout">Cerrar Sesión</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+
+            <!-- VIEW: Plan Maestro -->
+            <section id="view-plan" class="view-section active">
+                <header class="page-header">
+                    <h1 class="page-title">Plan Maestro</h1>
+                    <button class="btn btn-primary" id="btnNewActivity">
+                        <i class="fas fa-plus"></i> Nueva Actividad
+                    </button>
+                </header>
+
+                <div class="filter-bar">
+                    <input type="text" id="searchPlan" class="filter-input" placeholder="Buscar actividad o código...">
+                    <select id="filterStatus" class="filter-input">
+                        <option value="">Todos los Estados</option>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="En Progreso">En Progreso</option>
+                        <option value="Completado">Completado</option>
+                    </select>
+                </div>
+
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Actividad</th>
+                                <th>Responsable</th>
+                                <th>Estado</th>
+                                <th>Fechas</th>
+                                <th>Docs</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="planTableBody">
+                            <!-- Rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- VIEW: Gantt -->
+            <section id="view-gantt" class="view-section" style="display:none;">
+                <header class="page-header">
+                    <h1 class="page-title">Carta Gantt Global</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-sm" onclick="renderGantt('month')">Mes</button>
+                        <button class="btn btn-sm" onclick="renderGantt('quarter')">Trimestre</button>
+                    </div>
+                </header>
+                <div class="gantt-container" id="ganttChart">
+                    <!-- Gantt render area -->
+                    <div class="text-center p-4">Cargando visualización...</div>
+                </div>
+            </section>
+
+            <!-- VIEW: Calendar -->
+            <section id="view-calendar" class="view-section" style="display:none;">
+                <header class="page-header">
+                    <h1 class="page-title">Calendario de Hitos</h1>
+                </header>
+                <div class="calendar-container" id="calendarView">
+                    <!-- Calendar render area -->
+                </div>
+            </section>
+
+            <!-- VIEW: Hitos -->
+            <section id="view-hitos" class="view-section" style="display:none;">
+                <header class="page-header">
+                    <h1 class="page-title">Gestión de Hitos</h1>
+                    <button class="btn btn-primary" id="btnNewHitoGlobal">
+                        <i class="fas fa-plus"></i> Nuevo Hito
+                    </button>
+                </header>
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Hito</th>
+                                <th>Fecha Estimada</th>
+                                <th>Tarea Asociada</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hitosTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- VIEW: Documentos -->
+            <section id="view-documents" class="view-section" style="display:none;">
+                <header class="page-header">
+                    <h1 class="page-title">Documentos Subidos</h1>
+                    <button class="btn btn-primary" id="btnNewDocGlobal">
+                        <i class="fas fa-upload"></i> Subir Documento
+                    </button>
+                </header>
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Archivo</th>
+                                <th>Tarea Asociada</th>
+                                <th>Subido Por</th>
+                                <th>Fecha</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="docsTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- VIEW: Users -->
+            <section id="view-users" class="view-section" style="display:none;">
+                <header class="page-header">
+                    <h1 class="page-title">Gestión de Usuarios</h1>
+                    <button class="btn btn-primary" id="btnNewUser">
+                        <i class="fas fa-user-plus"></i> Nuevo Usuario
+                    </button>
+                </header>
+
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Usuario</th>
+                                <th>Fecha Creación</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <!-- Rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODALS -->
+
+    <!-- Modal: Actividad Plan -->
+    <div id="activityModal" class="modal">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2 class="modal-title" id="activityModalTitle">Actividad</h2>
+                <button class="close-btn" data-modal="activityModal">&times;</button>
+            </header>
+            <form id="activityForm" class="form-grid">
+                <input type="hidden" id="actId">
+                <div class="form-group">
+                    <label class="form-label">Código</label>
+                    <input type="text" id="actCode" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Producto</label>
+                    <input type="text" id="actProduct" class="form-input">
+                </div>
+                <div class="full-width form-group">
+                    <label class="form-label">Nombre Tarea</label>
+                    <textarea id="actName" class="form-textarea" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Responsable</label>
+                    <input type="text" id="actResp" class="form-input" placeholder="Ej: Astrid">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Estado</label>
+                    <select id="actStatus" class="form-select">
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="En Progreso">En Progreso</option>
+                        <option value="Completado">Completado</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Inicio</label>
+                    <input type="date" id="actStart" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Fin</label>
+                    <input type="date" id="actEnd" class="form-input">
+                </div>
+                <div class="full-width">
+                    <button type="submit" class="btn btn-primary w-full">Guardar</button>
+                </div>
+            </form>
+
+            <!-- Sub-section: Hitos & Docs -->
+            <div id="extrasSection" class="hidden mt-4 pt-4 border-t">
+
+                <!-- DOCUMENTOS -->
+                <div class="mb-4 pb-4 border-b">
+                    <h3 class="text-sm font-bold mb-2">Evidencia / Documento</h3>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <input type="file" id="docFile" class="form-input text-sm" style="font-size:0.8rem;">
+                        <button class="btn btn-sm btn-primary" onclick="PlanModule.uploadFile()">
+                            <i class="fas fa-upload"></i> Subir
+                        </button>
+                    </div>
+                    <div id="fileStatus" class="mt-1 text-sm text-slate-500"></div>
+                </div>
+
+                <!-- HITOS -->
+                <h3 class="text-sm font-bold mb-2">Hitos y Entregables</h3>
+                <div id="modalHitosList" class="mb-2" style="max-height: 150px; overflow-y: auto;">
+                    <!-- List of milestones -->
+                    <div class="text-center text-sm text-slate-400">Cargando...</div>
+                </div>
+
+                <!-- Add Hito Form -->
+                <div
+                    style="background:#f8fafc; padding:0.75rem; border-radius:4px; border:1px solid #e2e8f0; margin-top:0.5rem;">
+                    <div style="font-size:0.75rem; font-weight:700; margin-bottom:0.5rem; color:#64748b;">NUEVO HITO
+                    </div>
+                    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
+                        <input type="text" id="newHitoName" class="form-input" style="font-size:0.8rem;"
+                            placeholder="Nombre hito...">
+                        <input type="date" id="newHitoDate" class="form-input" style="font-size:0.8rem;">
+                    </div>
+                    <textarea id="newHitoDesc" class="form-input" style="font-size:0.8rem; margin-bottom:0.5rem;"
+                        placeholder="Descripción..." rows="1"></textarea>
+                    <button class="btn btn-sm btn-secondary" style="width:100%; border:1px solid #cbd5e1;"
+                        onclick="PlanModule.addHito()">+ Guardar Hito</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Usuario -->
+    <div id="userModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <header class="modal-header">
+                <h2 class="modal-title" id="userModalTitle">Usuario</h2>
+                <button class="close-btn" data-modal="userModal">&times;</button>
+            </header>
+            <form id="userForm">
+                <input type="hidden" id="userId">
+                <div class="form-group">
+                    <label class="form-label">Nombre Completo</label>
+                    <input type="text" id="userName" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Username (Login)</label>
+                    <input type="text" id="userUsername" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Contraseña</label>
+                    <input type="password" id="userPass" class="form-input"
+                        placeholder="Dejar vacía para mantener actual">
+                </div>
+                <button type="submit" class="btn btn-primary w-full">Guardar Usuario</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Nuevo Hito Global -->
+    <div id="hitoGlobalModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <header class="modal-header">
+                <h2 class="modal-title">Nuevo Hito</h2>
+                <button class="close-btn" data-modal="hitoGlobalModal">&times;</button>
+            </header>
+            <form id="hitoGlobalForm">
+                <div class="form-group">
+                    <label class="form-label">Actividad Asociada</label>
+                    <select id="hitoPlanSelect" class="form-select" required>
+                        <option value="">Cargando actividades...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nombre Hito</label>
+                    <input type="text" id="hitoGlobalName" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Fecha Estimada</label>
+                    <input type="date" id="hitoGlobalDate" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Descripción</label>
+                    <textarea id="hitoGlobalDesc" class="form-textarea" rows="2"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary w-full">Crear Hito</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Nuevo Documento Global -->
+    <div id="docGlobalModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <header class="modal-header">
+                <h2 class="modal-title">Subir Documento</h2>
+                <button class="close-btn" data-modal="docGlobalModal">&times;</button>
+            </header>
+            <form id="docGlobalForm">
+                <div class="form-group">
+                    <label class="form-label">Actividad Asociada</label>
+                    <select id="docPlanSelect" class="form-select" required>
+                        <option value="">Cargando actividades...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Archivo</label>
+                    <input type="file" id="docGlobalFile" class="form-input" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-full">Subir Documento</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Scripts -->
+    <script src="js/modules/plan.js"></script>
+    <script src="js/modules/users.js"></script>
+    <script src="js/modules/gantt.js"></script>
+    <script src="js/modules/calendar.js"></script>
+    <script src="js/modules/hitos.js"></script>
+    <script src="js/modules/documents.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

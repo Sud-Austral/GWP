@@ -1,0 +1,2173 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <script src="../../../script/router.js"></script>
+    <script src="../../../script/api.js"></script>
+    <script src="../../../script/utils.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informes - Geoportal Municipal</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#ec4899',
+                        accent: '#8b5cf6',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <link rel="stylesheet" href="styles/admin-styles.css">
+
+    <style>
+        :root {
+            --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+            --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            --gradient-info: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #f8fafc;
+            background-image:
+                radial-gradient(at 0% 0%, hsla(253, 16%, 95%, 1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(225, 39%, 95%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(339, 49%, 95%, 1) 0, transparent 50%);
+            color: #1e293b;
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+        }
+
+        .report-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .report-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid #f1f5f9;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .report-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--card-gradient, var(--gradient-primary));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .report-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 40px -15px rgba(99, 102, 241, 0.2);
+            border-color: transparent;
+        }
+
+        .report-card:hover::before {
+            opacity: 1;
+        }
+
+        .report-card.selected {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .report-card.selected::before {
+            opacity: 1;
+        }
+
+        .icon-circle {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .icon-circle.blue {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #2563eb;
+        }
+
+        .icon-circle.green {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #059669;
+        }
+
+        .icon-circle.yellow {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #d97706;
+        }
+
+        .icon-circle.purple {
+            background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+            color: #7c3aed;
+        }
+
+        .icon-circle.red {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #dc2626;
+        }
+
+        .icon-circle.cyan {
+            background: linear-gradient(135deg, #cffafe 0%, #a5f3fc 100%);
+            color: #0891b2;
+        }
+
+        .icon-circle.pink {
+            background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+            color: #db2777;
+        }
+
+        .icon-circle.indigo {
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+            color: #4f46e5;
+        }
+
+        .icon-circle.emerald {
+            background: linear-gradient(135deg, #d1fae5 0%, #6ee7b7 100%);
+            color: #047857;
+        }
+
+        .icon-circle.orange {
+            background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
+            color: #ea580c;
+        }
+
+        .header-gradient {
+            background: var(--gradient-primary);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-gradient::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 60%;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            transform: rotate(-15deg);
+        }
+
+        .metric-card-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .metric-card-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .metric-card-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid #f1f5f9;
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px -10px rgba(0, 0, 0, 0.1);
+        }
+
+        .preview-panel {
+            background: white;
+            border-radius: 1rem;
+            border: 2px dashed #e2e8f0;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-panel.has-content {
+            border: 1px solid #e2e8f0;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #6366f1;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 2px solid #6366f1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-secondary:hover {
+            background: #6366f1;
+            color: white;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transform: translateX(150%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-header .icon-box {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        [data-type="portfolio"] .report-card {
+            --card-gradient: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+
+        [data-type="status"] .report-card {
+            --card-gradient: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        [data-type="area"] .report-card {
+            --card-gradient: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+
+        [data-type="financial"] .report-card {
+            --card-gradient: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        [data-type="progress"] .report-card {
+            --card-gradient: linear-gradient(135deg, #06b6d4, #0891b2);
+        }
+
+        [data-type="priority"] .report-card {
+            --card-gradient: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        [data-type="professionals"] .report-card {
+            --card-gradient: linear-gradient(135deg, #ec4899, #db2777);
+        }
+
+        [data-type="sector"] .report-card {
+            --card-gradient: linear-gradient(135deg, #14b8a6, #0d9488);
+        }
+
+        [data-type="timeline"] .report-card {
+            --card-gradient: linear-gradient(135deg, #6366f1, #4f46e5);
+        }
+
+        [data-type="comparison"] .report-card {
+            --card-gradient: linear-gradient(135deg, #f97316, #ea580c);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+
+    <div id="headerRender"></div>
+
+    <div class="flex">
+
+        <div id="asideRender"></div>
+
+        <main class="flex-1 p-6">
+
+            <div class="header-gradient mb-8 animate-fade-in">
+                <div class="relative z-10">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur">
+                            <i class="fas fa-file-chart-line text-2xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-3xl font-bold">Centro de Informes</h1>
+                            <p class="text-white/80">Genera reportes detallados de la cartera de proyectos municipales
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-4 mt-6">
+                        <div class="bg-white/10 backdrop-blur rounded-xl px-4 py-2 flex items-center gap-2">
+                            <i class="fas fa-database"></i>
+                            <span id="totalProjects">0</span> proyectos cargados
+                        </div>
+                        <div class="bg-white/10 backdrop-blur rounded-xl px-4 py-2 flex items-center gap-2">
+                            <i class="fas fa-clock"></i>
+                            Última actualización: <span id="lastUpdate">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metric-card-container mb-8 animate-fade-in" style="animation-delay: 0.1s;">
+                <div class="metric-card">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium">Inversión Total</p>
+                            <p class="text-2xl font-bold text-gray-800" id="statInversion">$0</p>
+                        </div>
+                        <div class="icon-circle green">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium">En Ejecución</p>
+                            <p class="text-2xl font-bold text-gray-800" id="statEjecucion">0</p>
+                        </div>
+                        <div class="icon-circle blue">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium">Avance Promedio</p>
+                            <p class="text-2xl font-bold text-gray-800" id="statAvance">0%</p>
+                        </div>
+                        <div class="icon-circle purple">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium">Prioritarios</p>
+                            <p class="text-2xl font-bold text-gray-800" id="statPrioritarios">0</p>
+                        </div>
+                        <div class="icon-circle red">
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-header animate-fade-in" style="animation-delay: 0.2s;">
+                <div class="icon-box">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Tipos de Informes</h2>
+                    <p class="text-gray-500 text-sm">Selecciona el tipo de informe que deseas generar</p>
+                </div>
+            </div>
+
+            <div class="report-cards-grid mb-8 animate-fade-in" style="animation-delay: 0.3s;"
+                id="reportCardsContainer">
+
+                <div class="report-card" data-type="portfolio" onclick="selectReport('portfolio')">
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="icon-circle blue">
+                            <i class="fas fa-briefcase"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800">Cartera de Proyectos</h3>
+                            <p class="text-sm text-gray-500">Resumen ejecutivo general</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Visión completa de todos los proyectos con KPIs principales, distribución por área y estado
+                        general.
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                        <span><i class="fas fa-file-pdf mr-1"></i>PDF / Excel</span>
+                        <span class="text-indigo-500 font-medium">Generar →</span>
+                    </div>
+                </div>
+
+                <div class="report-card" data-type="status" onclick="selectReport('status')">
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="icon-circle green">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800">Por Estado</h3>
+                            <p class="text-sm text-gray-500">Clasificación por etapa</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Análisis de proyectos agrupados por estado: En diseño, Aprobado, En ejecución, Completado, etc.
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                        <span><i class="fas fa-file-pdf mr-1"></i>PDF / Excel</span>
+                        <span class="text-emerald-500 font-medium">Generar →</span>
+                    </div>
+                </div>
+
+                <div class="report-card" data-type="area" onclick="selectReport('area')">
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="icon-circle purple">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800">Por Área</h3>
+                            <p class="text-sm text-gray-500">Distribución sectorial</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Desglose por áreas: Vialidad, Saneamiento, Espacios Públicos, Educación, Salud y otras.
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                        <span><i class="fas fa-file-pdf mr-1"></i>PDF / Excel</span>
+                        <span class="text-purple-500 font-medium">Generar →</span>
+                    </div>
+                </div>
+
+                <div class="report-card" data-type="financial" onclick="selectReport('financial')">
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="icon-circle yellow">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800">Financiero</h3>
+                            <p class="text-sm text-gray-500">Análisis presupuestario</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Detalle de inversiones, fuentes de financiamiento, montos por proyecto y ejecución
+                        presupuestaria.
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                        <span><i class="fas fa-file-pdf mr-1"></i>PDF / Excel</span>
+                        <span class="text-amber-500 font-medium">Generar →</span>
+                    </div>
+                </div>
+
+                <div class="report-card" data-type="progress" onclick="selectReport('progress')">
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="icon-circle cyan">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800">Avance de Proyectos</h3>
+                            <p class="text-sm text-gray-500">Progreso y rendimiento</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Porcentaje de avance de cada proyecto, comparativa con metas y alertas de retraso.
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                        <span><i class="fas fa-file-pdf mr-1"></i>PDF / Excel</span>
+                        <span class="text-cyan-500 font-medium">Generar →</span>
+                    </div>
+                </div>
+
+                <div class="report-card" data-type="priority" onclick="selectReport('priority')">
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="icon-circle red">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800">Proyectos Prioritarios</h3>
+                            <p class="text-sm text-gray-500">Alta prioridad</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Listado de proyectos marcados como prioritarios con seguimiento detallado y alertas.
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                        <span><i class="fas fa-file-pdf mr-1"></i>PDF / Excel</span>
+                        <span class="text-red-500 font-medium">Generar →</span>
+                    </div>
+                </div>
+
+                <div class="report-card" data-type="professionals" onclick="selectReport('professionals')">
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="icon-circle pink">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800">Carga por Profesional</h3>
+                            <p class="text-sm text-gray-500">Distribución de trabajo</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Proyectos asignados a cada profesional, carga de trabajo y distribución de responsabilidades.
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                        <span><i class="fas fa-file-pdf mr-1"></i>PDF / Excel</span>
+                        <span class="text-pink-500 font-medium">Generar →</span>
+                    </div>
+                </div>
+
+                <div class="report-card" data-type="sector" onclick="selectReport('sector')">
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="icon-circle emerald">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800">Por Sector/Territorio</h3>
+                            <p class="text-sm text-gray-500">Distribución geográfica</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Proyectos agrupados por sector territorial, unidad vecinal y ubicación geográfica.
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                        <span><i class="fas fa-file-pdf mr-1"></i>PDF / Excel</span>
+                        <span class="text-teal-500 font-medium">Generar →</span>
+                    </div>
+                </div>
+
+                <div class="report-card" data-type="timeline" onclick="selectReport('timeline')">
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="icon-circle indigo">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800">Cronograma / Timeline</h3>
+                            <p class="text-sm text-gray-500">Planificación temporal</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Línea de tiempo de proyectos, hitos programados, fechas de inicio y término planificadas.
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                        <span><i class="fas fa-file-pdf mr-1"></i>PDF / Excel</span>
+                        <span class="text-indigo-500 font-medium">Generar →</span>
+                    </div>
+                </div>
+
+                <div class="report-card" data-type="comparison" onclick="selectReport('comparison')">
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="icon-circle orange">
+                            <i class="fas fa-balance-scale"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800">Comparativo Anual</h3>
+                            <p class="text-sm text-gray-500">Análisis histórico</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Comparación de métricas entre años de elaboración y ejecución, tendencias y evolución.
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                        <span><i class="fas fa-file-pdf mr-1"></i>PDF / Excel</span>
+                        <span class="text-orange-500 font-medium">Generar →</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-6 mb-8 animate-fade-in" style="animation-delay: 0.4s;"
+                id="generationPanel">
+                <div class="flex flex-col lg:flex-row gap-6">
+
+                    <div class="lg:w-1/3">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">
+                            <i class="fas fa-cog mr-2 text-indigo-500"></i>Opciones de Generación
+                        </h3>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Informe</label>
+                                <select id="reportType" onchange="updatePreview()"
+                                    class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50">
+                                    <option value="portfolio">Cartera de Proyectos</option>
+                                    <option value="status">Por Estado</option>
+                                    <option value="area">Por Área</option>
+                                    <option value="financial">Financiero</option>
+                                    <option value="progress">Avance de Proyectos</option>
+                                    <option value="priority">Proyectos Prioritarios</option>
+                                    <option value="professionals">Carga por Profesional</option>
+                                    <option value="sector">Por Sector/Territorio</option>
+                                    <option value="timeline">Cronograma / Timeline</option>
+                                    <option value="comparison">Comparativo Anual</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Área (Opcional)</label>
+                                <select id="reportArea"
+                                    class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50">
+                                    <option value="">Todas las áreas</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Profesional
+                                    (Opcional)</label>
+                                <select id="reportProfessional" onchange="updatePreview()"
+                                    class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50">
+                                    <option value="">Todos los profesionales</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Año de Filtro
+                                    (Opcional)</label>
+                                <select id="reportYear"
+                                    class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50">
+                                    <option value="">Todos los años</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Formato de Salida</label>
+                                <div class="flex gap-3">
+                                    <label class="flex-1 cursor-pointer">
+                                        <input type="radio" name="format" value="pdf" checked class="sr-only peer">
+                                        <div
+                                            class="p-4 border-2 border-gray-200 rounded-xl text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 transition-all">
+                                            <i class="fas fa-file-pdf text-2xl text-red-500 mb-2"></i>
+                                            <p class="font-medium text-gray-700">PDF</p>
+                                        </div>
+                                    </label>
+                                    <label class="flex-1 cursor-pointer">
+                                        <input type="radio" name="format" value="excel" class="sr-only peer">
+                                        <div
+                                            class="p-4 border-2 border-gray-200 rounded-xl text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 transition-all">
+                                            <i class="fas fa-file-excel text-2xl text-green-500 mb-2"></i>
+                                            <p class="font-medium text-gray-700">Excel</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button onclick="generateReport()" id="generateBtn"
+                                class="w-full btn-primary py-4 text-lg justify-center">
+                                <i class="fas fa-file-download"></i>
+                                Generar y Descargar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="lg:w-2/3">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">
+                            <i class="fas fa-eye mr-2 text-indigo-500"></i>Vista Previa del Informe
+                        </h3>
+                        <div class="preview-panel" id="previewPanel">
+                            <div class="flex-1 flex items-center justify-center text-gray-400 p-8">
+                                <div class="text-center">
+                                    <i class="fas fa-file-alt text-6xl mb-4 opacity-30"></i>
+                                    <p class="text-lg font-medium">Selecciona un tipo de informe</p>
+                                    <p class="text-sm">La vista previa se mostrará aquí</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in" style="animation-delay: 0.5s;">
+                <div class="glass-panel rounded-2xl p-6">
+                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-chart-pie text-indigo-500"></i>
+                        Distribución por Estado
+                    </h3>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-2xl p-6">
+                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-chart-bar text-indigo-500"></i>
+                        Inversión por Área
+                    </h3>
+                    <div class="chart-container">
+                        <canvas id="areaChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast">
+        <i class="fas fa-check-circle text-green-500" id="toastIcon"></i>
+        <span id="toastMessage"></span>
+    </div>
+
+    <script src="../../../script/layout.js"></script>
+    <script src="../../../script/help.js"></script>
+    <script>document.addEventListener('DOMContentLoaded', () => createHelpButton('informe'));</script>
+    <script>
+        // Configuración de IA para Resumen Ejecutivo
+        const API_KEY = getKey("gfhrsdfsdfseweretfghtddfdf");
+        const API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+        const MODEL_NAME = "GLM-4.6V-Flash";
+
+        async function fetchAIExecutiveSummary(projects, title) {
+            // Calcular totales
+            const totalInversion = projects.reduce((sum, p) => sum + (parseFloat(p.monto) || 0), 0);
+            const estadoCounts = {};
+            const areaCounts = {};
+            const individualProfessionalCounts = {};
+            const duplaCounts = {};
+
+            projects.forEach(p => {
+                // Estados y Areas
+                const estado = p.estado_nombre || 'Sin estado';
+                const area = p.area_nombre || 'Sin area';
+                estadoCounts[estado] = (estadoCounts[estado] || 0) + 1;
+                areaCounts[area] = (areaCounts[area] || 0) + 1;
+
+                // Duplas
+                if (p.dupla_profesional) {
+                    const dupla = p.dupla_profesional.trim();
+                    duplaCounts[dupla] = (duplaCounts[dupla] || 0) + 1;
+                }
+
+                // Profesionales Individuales (1-5)
+                [p.profesional_1, p.profesional_2, p.profesional_3, p.profesional_4, p.profesional_5].forEach(prof => {
+                    if (prof && prof.trim()) {
+                        const name = prof.trim();
+                        individualProfessionalCounts[name] = (individualProfessionalCounts[name] || 0) + 1;
+                    }
+                });
+            });
+
+            // Top Profesionales (ordenados)
+            const topProfesionales = Object.entries(individualProfessionalCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8)
+                .map(([name, count]) => `${name} (${count})`)
+                .join(', ');
+
+            const topDuplas = Object.entries(duplaCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([name, count]) => `${name} (${count})`)
+                .join(', ');
+
+            // Muestra de proyectos para contexto
+            const summaryData = projects.slice(0, 15).map(p => ({
+                nombre: p.nombre,
+                monto: p.monto,
+                estado: p.estado_nombre,
+                area: p.area_nombre
+            }));
+
+            const prompt = `Eres un experto analista de gestión pública.
+Genera un análisis completo para el informe de proyectos municipales: "${title}".
+
+DATOS GENERALES:
+- Cantidad Proyectos: ${projects.length}
+- Inversión Total: $${new Intl.NumberFormat('es-CL').format(totalInversion)}
+- Distribución por Estado: ${JSON.stringify(estadoCounts)}
+- Distribución por Área: ${JSON.stringify(areaCounts)}
+- Carga Laboral Profesionales (Top): ${topProfesionales}
+- Duplas Principales: ${topDuplas}
+- Muestra de proyectos: ${JSON.stringify(summaryData)}
+
+INSTRUCCIONES:
+Analiza los datos y genera un objeto JSON (SIN MARKDOWN, SOLO JSON) con la siguiente estructura exacta:
+{
+  "resumen_ejecutivo": "Texto de aprox 250 palabras con introducción, análisis de recursos, hallazgos y conclusión.",
+  "analisis_metricas": "Breve explicación (máx 40 palabras) sobre el volumen de inversión y cantidad de proyectos.",
+  "analisis_estados": "Breve explicación (máx 40 palabras) sobre cómo se distribuyen los estados de los proyectos.",
+  "analisis_areas": "Breve explicación (máx 40 palabras) sobre las áreas con mayor enfoque o inversión.",
+  "analisis_equipo": "Breve explicación (máx 40 palabras) sobre la carga laboral del equipo y profesionales destacados.",
+  "analisis_detalle": "Breve introducción (máx 40 palabras) para la tabla detallada de proyectos que sigue a continuación."
+}
+
+Asegúrate de que el JSON sea válido. Usa un tono formal y técnico.`;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: MODEL_NAME,
+                        messages: [
+                            { role: "system", content: "Eres un asistente de análisis de datos para SECPLAN. Respondes SIEMPRE en formato JSON válido." },
+                            { role: "user", content: prompt }
+                        ],
+                        temperature: 0.7
+                    })
+                });
+
+                if (!response.ok) throw new Error("Error en API IA");
+                const data = await response.json();
+
+                let content = data.choices[0].message.content;
+
+                // Intento robusto de extraer JSON
+                const firstBrace = content.indexOf('{');
+                const lastBrace = content.lastIndexOf('}');
+
+                if (firstBrace !== -1 && lastBrace !== -1) {
+                    content = content.substring(firstBrace, lastBrace + 1);
+                }
+
+                const parsed = JSON.parse(content);
+
+                // Asegurar que existan las claves para que no quede vacio
+                return {
+                    resumen_ejecutivo: parsed.resumen_ejecutivo || "Resumen no disponible.",
+                    analisis_metricas: parsed.analisis_metricas || "Análisis de métricas no disponible.",
+                    analisis_estados: parsed.analisis_estados || "Análisis de estados no disponible.",
+                    analisis_areas: parsed.analisis_areas || "Análisis de áreas no disponible.",
+                    analisis_equipo: parsed.analisis_equipo || "Análisis de equipo no disponible.",
+                    analisis_detalle: parsed.analisis_detalle || "Análisis detallado no disponible."
+                };
+
+            } catch (e) {
+                console.error("Error generando resumen IA:", e);
+                return {
+                    resumen_ejecutivo: "No se pudo generar el análisis inteligente. Revise la conexión a internet o la configuración de API Key.",
+                    analisis_metricas: "Sin análisis disponible.",
+                    analisis_estados: "Sin análisis disponible.",
+                    analisis_areas: "Sin análisis disponible.",
+                    analisis_equipo: "Sin análisis disponible.",
+                    analisis_detalle: "Sin análisis disponible."
+                };
+            }
+        }
+
+
+        let proyectos = [];
+        let catalogData = { areas: [], estados_proyecto: [], financiamientos: [] };
+        let selectedReportType = 'portfolio';
+        let statusChart = null;
+        let areaChart = null;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            checkLoginStatus();
+            loadData();
+        });
+
+        async function loadData() {
+            try {
+
+                proyectos = await api.get('/proyectos');
+
+                const [areas, estados, financiamientos] = await Promise.all([
+                    api.get('/areas').catch(() => []),
+                    api.get('/estados_proyecto').catch(() => []),
+                    api.get('/financiamientos').catch(() => [])
+                ]);
+
+                catalogData.areas = areas;
+                catalogData.estados_proyecto = estados;
+                catalogData.financiamientos = financiamientos;
+
+                updateStats();
+                populateFilters();
+                initializeCharts();
+                updatePreview();
+
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleDateString('es-CL');
+
+            } catch (error) {
+                console.error('Error cargando datos:', error);
+                showToast('Error al cargar datos', 'error');
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('totalProjects').textContent = proyectos.length;
+
+            const totalInversion = proyectos.reduce((sum, p) => sum + (parseFloat(p.monto) || 0), 0);
+            document.getElementById('statInversion').textContent = formatCurrency(totalInversion);
+
+            const enEjecucion = proyectos.filter(p =>
+                p.estado_nombre && p.estado_nombre.toLowerCase().includes('ejecución')
+            ).length;
+            document.getElementById('statEjecucion').textContent = enEjecucion;
+
+            const avgProgress = proyectos.length > 0
+                ? proyectos.reduce((sum, p) => sum + (parseFloat(p.avance_total_porcentaje) || 0), 0) / proyectos.length
+                : 0;
+            const displayProgress = avgProgress > 1 ? avgProgress : avgProgress * 100;
+            document.getElementById('statAvance').textContent = displayProgress.toFixed(1) + '%';
+
+            const prioritarios = proyectos.filter(p => p.es_prioridad === 'SI').length;
+            document.getElementById('statPrioritarios').textContent = prioritarios;
+        }
+
+        function populateFilters() {
+
+            const areaSelect = document.getElementById('reportArea');
+            catalogData.areas.forEach(area => {
+                const option = document.createElement('option');
+                option.value = area.id;
+                option.textContent = area.nombre;
+                areaSelect.appendChild(option);
+            });
+
+            const yearSelect = document.getElementById('reportYear');
+            const years = [...new Set(proyectos.map(p => p.anno_elaboracion).filter(Boolean))].sort((a, b) => b - a);
+            years.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                yearSelect.appendChild(option);
+            });
+
+            // Poblar filtro de profesionales
+            const professionalSelect = document.getElementById('reportProfessional');
+            const professionals = new Set();
+
+            proyectos.forEach(p => {
+                // Duplas
+                if (p.dupla_profesional) professionals.add(p.dupla_profesional.trim());
+
+                // Individuales
+                [p.profesional_1, p.profesional_2, p.profesional_3, p.profesional_4, p.profesional_5].forEach(prof => {
+                    if (prof && prof.trim()) professionals.add(prof.trim());
+                });
+            });
+
+            const sortedProfessionals = [...professionals].sort();
+
+            sortedProfessionals.forEach(prof => {
+                const option = document.createElement('option');
+                option.value = prof;
+                option.textContent = prof;
+                professionalSelect.appendChild(option);
+            });
+        }
+
+        function initializeCharts() {
+
+            const estadoCounts = {};
+            proyectos.forEach(p => {
+                const estado = p.estado_nombre || 'Sin estado';
+                estadoCounts[estado] = (estadoCounts[estado] || 0) + 1;
+            });
+
+            const statusCtx = document.getElementById('statusChart');
+            if (statusCtx) {
+                if (statusChart) statusChart.destroy();
+                statusChart = new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(estadoCounts),
+                        datasets: [{
+                            data: Object.values(estadoCounts),
+                            backgroundColor: [
+                                '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+                                '#8b5cf6', '#06b6d4', '#ec4899', '#6366f1'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            }
+
+            const areaMounts = {};
+            proyectos.forEach(p => {
+                const area = p.area_nombre || 'Sin área';
+                areaMounts[area] = (areaMounts[area] || 0) + (parseFloat(p.monto) || 0);
+            });
+
+            const areaCtx = document.getElementById('areaChart');
+            if (areaCtx) {
+                if (areaChart) areaChart.destroy();
+                areaChart = new Chart(areaCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(areaMounts),
+                        datasets: [{
+                            label: 'Inversión ($)',
+                            data: Object.values(areaMounts),
+                            backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: value => formatCurrencyShort(value)
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function selectReport(type) {
+            selectedReportType = type;
+            document.getElementById('reportType').value = type;
+
+            document.querySelectorAll('.report-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.querySelector(`[data-type="${type}"]`)?.classList.add('selected');
+
+            updatePreview();
+
+            document.getElementById('generationPanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function updatePreview() {
+            const type = document.getElementById('reportType').value;
+            const previewPanel = document.getElementById('previewPanel');
+
+            const reportTitles = {
+                portfolio: 'Cartera de Proyectos',
+                status: 'Proyectos por Estado',
+                area: 'Proyectos por Área',
+                financial: 'Informe Financiero',
+                progress: 'Avance de Proyectos',
+                priority: 'Proyectos Prioritarios',
+                professionals: 'Carga por Profesional',
+                sector: 'Distribución por Sector',
+                timeline: 'Cronograma de Proyectos',
+                comparison: 'Comparativo Anual'
+            };
+
+            const filteredProjects = getFilteredProjects();
+            const stats = calculateReportStats(type, filteredProjects);
+
+            previewPanel.classList.add('has-content');
+            previewPanel.innerHTML = `
+                <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50">
+                    <h4 class="text-xl font-bold text-gray-800">${reportTitles[type] || 'Informe'}</h4>
+                    <p class="text-sm text-gray-500">Municipalidad de Algarrobo • ${new Date().toLocaleDateString('es-CL')}</p>
+                </div>
+                <div class="p-6 flex-1 overflow-auto">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-blue-50 rounded-xl p-4 text-center">
+                            <p class="text-2xl font-bold text-blue-600">${stats.total}</p>
+                            <p class="text-xs text-gray-500">Proyectos</p>
+                        </div>
+                        <div class="bg-green-50 rounded-xl p-4 text-center">
+                            <p class="text-2xl font-bold text-green-600">${formatCurrencyShort(stats.inversion)}</p>
+                            <p class="text-xs text-gray-500">Inversión</p>
+                        </div>
+                        <div class="bg-purple-50 rounded-xl p-4 text-center">
+                            <p class="text-2xl font-bold text-purple-600">${stats.avance}%</p>
+                            <p class="text-xs text-gray-500">Avance Prom.</p>
+                        </div>
+                        <div class="bg-amber-50 rounded-xl p-4 text-center">
+                            <p class="text-2xl font-bold text-amber-600">${stats.areas}</p>
+                            <p class="text-xs text-gray-500">Áreas</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <p class="text-sm text-gray-600">
+                            <i class="fas fa-info-circle text-indigo-500 mr-2"></i>
+                            Este informe incluirá ${stats.total} proyectos con un total de inversión de ${formatCurrency(stats.inversion)}.
+                        </p>
+                        <p class="text-sm text-gray-500">
+                            <i class="fas fa-file-alt text-gray-400 mr-2"></i>
+                            El documento generado contendrá tablas detalladas, gráficos y métricas relevantes.
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getFilteredProjects() {
+            let filtered = [...proyectos];
+
+            const areaId = document.getElementById('reportArea').value;
+            const year = document.getElementById('reportYear').value;
+            const professional = document.getElementById('reportProfessional').value;
+
+            if (areaId) {
+                filtered = filtered.filter(p => p.area_id == areaId);
+            }
+            if (year) {
+                filtered = filtered.filter(p => p.anno_elaboracion == year);
+            }
+            if (professional) {
+                filtered = filtered.filter(p => {
+                    const inDupla = p.dupla_profesional && p.dupla_profesional.includes(professional);
+                    const inProfs = [p.profesional_1, p.profesional_2, p.profesional_3, p.profesional_4, p.profesional_5]
+                        .some(prof => prof && prof.includes(professional));
+                    return inDupla || inProfs;
+                });
+            }
+
+            return filtered;
+        }
+
+        function calculateReportStats(type, projects) {
+            const total = projects.length;
+            const inversion = projects.reduce((sum, p) => sum + (parseFloat(p.monto) || 0), 0);
+            const avgProgress = total > 0
+                ? projects.reduce((sum, p) => sum + (parseFloat(p.avance_total_porcentaje) || 0), 0) / total
+                : 0;
+            const areas = new Set(projects.map(p => p.area_nombre).filter(Boolean)).size;
+
+            return {
+                total,
+                inversion,
+                avance: (avgProgress > 1 ? avgProgress : avgProgress * 100).toFixed(1),
+                areas
+            };
+        }
+
+        async function generateReport() {
+            const format = document.querySelector('input[name="format"]:checked').value;
+            const type = document.getElementById('reportType').value;
+
+            const btn = document.getElementById('generateBtn');
+            const originalContent = btn.innerHTML;
+
+            try {
+                if (format === 'pdf') {
+                    // Feedback visual específico para IA
+                    btn.innerHTML = '<span class="spinner"></span> Generando Resumen IA...';
+                    btn.disabled = true;
+
+                    // Obtener proyectos filtrados para pasarlos a la IA
+                    const filteredProjects = getFilteredProjects(); // Reutiliza la lógica de filtro
+
+                    // Obtener titulo
+                    const reportTitles = {
+                        portfolio: 'Cartera de Proyectos',
+                        status: 'Proyectos por Estado',
+                        area: 'Proyectos por Area',
+                        financial: 'Informe Financiero',
+                        progress: 'Avance de Proyectos',
+                        priority: 'Proyectos Prioritarios',
+                        professionals: 'Carga por Profesional',
+                        sector: 'Distribucion Territorial',
+                        timeline: 'Cronograma',
+                        comparison: 'Comparativo Anual'
+                    };
+                    const title = reportTitles[type] || 'Informe';
+
+                    // Llamada a la IA
+                    const aiSummary = await fetchAIExecutiveSummary(filteredProjects, title);
+
+                    btn.innerHTML = '<span class="spinner"></span> Generando PDF...';
+
+                    // Generar PDF con el resumen
+                    generatePDF(type, aiSummary);
+
+                } else {
+                    btn.innerHTML = '<span class="spinner"></span> Generando Excel...';
+                    btn.disabled = true;
+                    // Pequeña pausa para que se renderice el spinner
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    generateExcel(type);
+                }
+
+                showToast('Informe generado correctamente', 'success');
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error al generar informe', 'error');
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            }
+        }
+
+        function printParsedMarkdown(doc, rawText, x, y, maxWidth, normalFontSize = 10) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(normalFontSize);
+            doc.setTextColor(50, 50, 50);
+
+            const lines = rawText.split('\n');
+            let currentY = y;
+            const lineHeight = normalFontSize * 0.5 + 2.5;
+
+            lines.forEach(line => {
+                line = line.trim();
+                // Skip empty lines at immediate start if you want, but Markdown often has them
+                if (!line) {
+                    currentY += lineHeight;
+                    return;
+                }
+
+                // Headers
+                let isHeader = false;
+                let fontSize = normalFontSize;
+                let headerText = line;
+
+                if (line.startsWith('#')) {
+                    isHeader = true;
+                    if (line.startsWith('###')) {
+                        fontSize = normalFontSize + 1;
+                        headerText = line.replace(/^###\s*/, '');
+                    } else if (line.startsWith('##')) {
+                        fontSize = normalFontSize + 2;
+                        headerText = line.replace(/^##\s*/, '');
+                    } else {
+                        fontSize = normalFontSize + 4;
+                        headerText = line.replace(/^#\s*/, '');
+                    }
+                }
+
+                if (isHeader) {
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(fontSize);
+                    doc.setTextColor(0, 0, 0); // Headers black
+
+                    // Simple wrap for headers
+                    const splitTitle = doc.splitTextToSize(headerText, maxWidth);
+                    doc.text(splitTitle, x, currentY);
+                    currentY += (splitTitle.length * (fontSize * 0.5 + 2.5)) + 4;
+
+                    // Reset
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(normalFontSize);
+                    doc.setTextColor(50, 50, 50);
+                    return;
+                }
+
+                // List Items
+                let indentX = 0;
+                if (line.startsWith('- ') || line.startsWith('* ')) {
+                    indentX = 5;
+                    line = line.substring(2);
+                    doc.text('•', x, currentY);
+                }
+
+                // Word Processing for Bold (**text**)
+                // Split by ** but keep delimiters to identify parts
+                const parts = line.split(/(\*\*)/g);
+                let isBold = false;
+                const atoms = [];
+
+                parts.forEach(part => {
+                    if (part === '**') {
+                        isBold = !isBold;
+                    } else {
+                        // Split by spaces to handle wrapping, keeping spaces attached to word or separate
+                        // Simplest: split by space
+                        const words = part.split(/(\s+)/);
+                        words.forEach(word => {
+                            if (word) atoms.push({ text: word, bold: isBold });
+                        });
+                    }
+                });
+
+                let currentLineWidth = indentX;
+                let lineBuffer = [];
+                let startX = x + indentX;
+
+                atoms.forEach(atom => {
+                    doc.setFont('helvetica', atom.bold ? 'bold' : 'normal');
+                    doc.setFontSize(normalFontSize);
+                    const atomWidth = doc.getTextWidth(atom.text);
+
+                    // Check availability
+                    if (currentLineWidth + atomWidth > maxWidth) {
+                        // Flush Line
+                        let printX = x + indentX;
+                        lineBuffer.forEach(a => {
+                            doc.setFont('helvetica', a.bold ? 'bold' : 'normal');
+                            doc.text(a.text, printX, currentY);
+                            printX += doc.getTextWidth(a.text);
+                        });
+
+                        currentY += lineHeight;
+                        lineBuffer = [];
+                        currentLineWidth = indentX; // Reset to indent
+                    }
+
+                    lineBuffer.push(atom);
+                    currentLineWidth += atomWidth;
+                });
+
+                // Flush remaining
+                if (lineBuffer.length > 0) {
+                    let printX = x + indentX;
+                    lineBuffer.forEach(a => {
+                        doc.setFont('helvetica', a.bold ? 'bold' : 'normal');
+                        doc.text(a.text, printX, currentY);
+                        printX += doc.getTextWidth(a.text);
+                    });
+                    currentY += lineHeight;
+                }
+            });
+
+            return currentY;
+        }
+
+        function generatePDF(type, aiData = {}) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const filteredProjects = getFilteredProjects();
+            const reportTitles = {
+                portfolio: 'Informe de Cartera de Proyectos',
+                status: 'Informe de Proyectos por Estado',
+                area: 'Informe de Proyectos por Area',
+                financial: 'Informe Financiero Detallado',
+                progress: 'Informe de Avance de Proyectos',
+                priority: 'Informe de Proyectos Prioritarios',
+                professionals: 'Informe de Carga por Profesional',
+                sector: 'Informe de Distribucion Territorial',
+                timeline: 'Informe de Cronograma de Proyectos',
+                comparison: 'Informe Comparativo Anual'
+            };
+
+            doc.setFillColor(99, 102, 241);
+            doc.rect(0, 0, 210, 297, 'F');
+
+            doc.setFillColor(255, 255, 255);
+            doc.circle(105, 80, 30, 'F');
+            doc.setTextColor(99, 102, 241);
+            doc.setFontSize(24);
+            doc.text('IMA', 105, 85, { align: 'center' });
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(28);
+            doc.text('GEOPORTAL MUNICIPAL', 105, 130, { align: 'center' });
+
+            doc.setFontSize(12);
+            doc.text('Ilustre Municipalidad de Algarrobo', 105, 145, { align: 'center' });
+
+            doc.setDrawColor(255, 255, 255);
+            doc.setLineWidth(0.5);
+            doc.line(50, 160, 160, 160);
+
+            doc.setFontSize(22);
+            doc.text(reportTitles[type] || 'Informe', 105, 185, { align: 'center' });
+
+            doc.setFontSize(14);
+            doc.text(`Fecha de Generacion: ${new Date().toLocaleDateString('es-CL')}`, 105, 210, { align: 'center' });
+
+            const totalInversion = filteredProjects.reduce((sum, p) => sum + (parseFloat(p.monto) || 0), 0);
+            const avgProgress = filteredProjects.length > 0
+                ? filteredProjects.reduce((sum, p) => sum + (parseFloat(p.avance_total_porcentaje) || 0), 0) / filteredProjects.length
+                : 0;
+
+            doc.setFontSize(11);
+            doc.text(`Total de Proyectos: ${filteredProjects.length}`, 105, 240, { align: 'center' });
+            doc.text(`Inversion Total: ${formatCurrency(totalInversion)}`, 105, 250, { align: 'center' });
+            doc.text(`Avance Promedio: ${(avgProgress > 1 ? avgProgress : avgProgress * 100).toFixed(1)}%`, 105, 260, { align: 'center' });
+
+            // PAGINA 2: RESUMEN EJECUTIVO (Página exclusiva)
+            if (aiData.resumen_ejecutivo) {
+                doc.addPage();
+
+                // Encabezado
+                doc.setFillColor(79, 70, 229);
+                doc.rect(0, 0, 210, 30, 'F');
+
+                doc.setTextColor(255, 255, 255);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(16);
+                doc.text('1. RESUMEN EJECUTIVO', 20, 20);
+
+                doc.setTextColor(0, 0, 0);
+
+                // Contenido
+                printParsedMarkdown(doc, aiData.resumen_ejecutivo, 20, 45, 170, 11);
+
+                // Nota pie
+                doc.setFontSize(8);
+                doc.setTextColor(150);
+                doc.text('Análisis generado automáticamente por Inteligencia Artificial.', 105, 280, { align: 'center' });
+            }
+
+            // PAGINA 3: ESTADÍSTICAS
+            doc.addPage();
+            let y = 20;
+
+            doc.setFillColor(99, 102, 241);
+            doc.rect(0, 0, 210, 25, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(14);
+            doc.text('ESTADÍSTICAS Y ANÁLISIS', 20, 16);
+            doc.setTextColor(0, 0, 0);
+
+            y = 35;
+
+            // Preparar datos estadísticos
+            const estadoCounts = {};
+            const areaCounts = {};
+            const financiamientoCounts = {};
+
+            filteredProjects.forEach(p => {
+                const estado = p.estado_nombre || 'Sin estado';
+                const area = p.area_nombre || 'Sin area';
+                const fin = p.financiamiento_nombre || 'Sin financiamiento';
+                estadoCounts[estado] = (estadoCounts[estado] || 0) + 1;
+                areaCounts[area] = (areaCounts[area] || 0) + 1;
+                financiamientoCounts[fin] = (financiamientoCounts[fin] || 0) + 1;
+            });
+
+            // 2. METRICAS CLAVE
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.text('2. Métricas Clave', 20, y);
+            y += 8;
+
+            const metricsData = [
+                ['Métrica', 'Valor'],
+                ['Total de Proyectos', filteredProjects.length.toString()],
+                ['Inversión Total', formatCurrency(totalInversion)],
+                ['Avance Promedio', `${(avgProgress > 1 ? avgProgress : avgProgress * 100).toFixed(1)}%`],
+                ['Proyectos Prioritarios', filteredProjects.filter(p => p.es_prioridad === 'SI').length.toString()],
+                ['Áreas Involucradas', Object.keys(areaCounts).length.toString()],
+                ['Fuentes de Financiamiento', Object.keys(financiamientoCounts).length.toString()]
+            ];
+
+            doc.autoTable({
+                startY: y,
+                head: [metricsData[0]],
+                body: metricsData.slice(1),
+                theme: 'grid',
+                headStyles: { fillColor: [99, 102, 241], fontStyle: 'bold' },
+                styles: { fontSize: 9, cellPadding: 4 },
+                columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 }, 1: { cellWidth: 80 } }
+            });
+
+            y = doc.lastAutoTable.finalY + 8;
+
+            // ANÁLISIS MÉTRICAS (ABAJO)
+            if (aiData.analisis_metricas) {
+                doc.setTextColor(79, 70, 229);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.text('Análisis:', 20, y);
+
+                y = printParsedMarkdown(doc, aiData.analisis_metricas, 35, y, 155, 10);
+                doc.setTextColor(0, 0, 0);
+            }
+
+            y += 15;
+
+            // 3. DISTRIBUCION POR ESTADO
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.text('3. Distribución por Estado', 20, y);
+            y += 8;
+
+            const estadoData = Object.entries(estadoCounts).map(([estado, count]) => [
+                estado,
+                count.toString(),
+                `${((count / filteredProjects.length) * 100).toFixed(1)}%`
+            ]);
+
+            doc.autoTable({
+                startY: y,
+                head: [['Estado', 'Cantidad', 'Porcentaje']],
+                body: estadoData,
+                theme: 'striped',
+                headStyles: { fillColor: [16, 185, 129] },
+                styles: { fontSize: 9, cellPadding: 3 }
+            });
+
+            y = doc.lastAutoTable.finalY + 8;
+
+            if (aiData.analisis_estados) {
+                if (y > 260) { doc.addPage(); y = 20; }
+
+                doc.setTextColor(79, 70, 229);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.text('Análisis:', 20, y);
+
+                y = printParsedMarkdown(doc, aiData.analisis_estados, 35, y, 155, 10);
+                doc.setTextColor(0, 0, 0);
+            }
+
+            y += 15;
+
+            if (y > 230) {
+                doc.addPage();
+                y = 35;
+                doc.setFillColor(99, 102, 241);
+                doc.rect(0, 0, 210, 25, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(14);
+                doc.text('ANÁLISIS POR ÁREA', 20, 16);
+                doc.setTextColor(0, 0, 0);
+            }
+
+            // 4. DISTRIBUCION POR AREA
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.text('4. Distribución por Área', 20, y);
+            y += 8;
+
+            const areaData = Object.entries(areaCounts).map(([area, count]) => {
+                const areaProjects = filteredProjects.filter(p => (p.area_nombre || 'Sin area') === area);
+                const areaInversion = areaProjects.reduce((sum, p) => sum + (parseFloat(p.monto) || 0), 0);
+                return [area, count.toString(), formatCurrencyShort(areaInversion)];
+            });
+
+            doc.autoTable({
+                startY: y,
+                head: [['Área', 'Proyectos', 'Inversión']],
+                body: areaData,
+                theme: 'striped',
+                headStyles: { fillColor: [139, 92, 246] },
+                styles: { fontSize: 9, cellPadding: 3 }
+            });
+            y = doc.lastAutoTable.finalY + 8;
+
+            if (aiData.analisis_areas) {
+                if (y > 260) { doc.addPage(); y = 20; }
+
+                doc.setTextColor(79, 70, 229);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.text('Análisis:', 20, y);
+
+                y = printParsedMarkdown(doc, aiData.analisis_areas, 35, y, 155, 10);
+                doc.setTextColor(0, 0, 0);
+            }
+
+            y += 15;
+
+            // 5. ANÁLISIS DE EQUIPO
+            if (y > 230) {
+                doc.addPage();
+                y = 35;
+                doc.setFillColor(99, 102, 241);
+                doc.rect(0, 0, 210, 25, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(14);
+                doc.text('ANÁLISIS DE EQUIPO', 20, 16);
+                doc.setTextColor(0, 0, 0);
+            }
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.text('5. Carga de Trabajo por Profesional', 20, y);
+            y += 8;
+
+            // Calcular carga
+            const professionalCounts = {};
+            filteredProjects.forEach(p => {
+                [p.profesional_1, p.profesional_2, p.profesional_3, p.profesional_4, p.profesional_5].forEach(prof => {
+                    if (prof && prof.trim()) {
+                        const name = prof.trim();
+                        professionalCounts[name] = (professionalCounts[name] || 0) + 1;
+                    }
+                });
+            });
+
+            const teamData = Object.entries(professionalCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 12) // Top 12
+                .map(([name, count]) => [name, count.toString()]);
+
+            if (teamData.length > 0) {
+                doc.autoTable({
+                    startY: y,
+                    head: [['Profesional', 'Proyectos Asignados']],
+                    body: teamData,
+                    theme: 'striped',
+                    headStyles: { fillColor: [245, 158, 11] }, // Amber/Orange
+                    styles: { fontSize: 9, cellPadding: 3 }
+                });
+
+                y = doc.lastAutoTable.finalY + 8;
+
+                if (aiData.analisis_equipo) {
+                    if (y > 260) { doc.addPage(); y = 20; }
+
+                    doc.setTextColor(79, 70, 229);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(9);
+                    doc.text('Análisis:', 20, y);
+
+                    y = printParsedMarkdown(doc, aiData.analisis_equipo, 35, y, 155, 10);
+                    doc.setTextColor(0, 0, 0);
+                }
+            } else {
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(10);
+                doc.text('No hay información de profesionales disponible.', 20, y);
+                y += 10;
+            }
+
+            doc.addPage();
+            doc.setFillColor(99, 102, 241);
+            doc.rect(0, 0, 210, 25, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(14);
+            doc.text('DETALLE DE PROYECTOS', 20, 16);
+            doc.setTextColor(0, 0, 0);
+
+            let tableY = 35;
+            if (aiData.analisis_detalle) {
+                doc.setTextColor(79, 70, 229);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.text('Análisis:', 20, tableY);
+
+                tableY = printParsedMarkdown(doc, aiData.analisis_detalle, 35, tableY, 155, 10);
+                doc.setTextColor(0, 0, 0);
+                tableY += 6;
+            }
+
+            let tableHeaders, tableBody;
+
+            switch (type) {
+                case 'financial':
+                    tableHeaders = [['Proyecto', 'Financiamiento', 'Monto', 'Estado', 'Avance']];
+                    tableBody = filteredProjects.map(p => [
+                        (p.nombre || '').substring(0, 35),
+                        (p.financiamiento_nombre || '-').substring(0, 20),
+                        formatCurrencyShort(p.monto || 0),
+                        (p.estado_nombre || '-').substring(0, 15),
+                        `${parseFloat(p.avance_total_porcentaje || 0).toFixed(0)}%`
+                    ]);
+                    break;
+
+                case 'progress':
+                    tableHeaders = [['Proyecto', 'Avance %', 'Estado', 'Area', 'Prioridad']];
+                    tableBody = filteredProjects
+                        .sort((a, b) => (parseFloat(b.avance_total_porcentaje) || 0) - (parseFloat(a.avance_total_porcentaje) || 0))
+                        .map(p => [
+                            (p.nombre || '').substring(0, 40),
+                            `${parseFloat(p.avance_total_porcentaje || 0).toFixed(1)}%`,
+                            (p.estado_nombre || '-').substring(0, 15),
+                            (p.area_nombre || '-').substring(0, 15),
+                            p.es_prioridad === 'SI' ? 'SI' : 'NO'
+                        ]);
+                    break;
+
+                case 'priority':
+                    const priorityProjects = filteredProjects.filter(p => p.es_prioridad === 'SI');
+                    tableHeaders = [['Proyecto', 'Area', 'Estado', 'Monto', 'Avance']];
+                    tableBody = priorityProjects.map(p => [
+                        (p.nombre || '').substring(0, 40),
+                        (p.area_nombre || '-').substring(0, 15),
+                        (p.estado_nombre || '-').substring(0, 15),
+                        formatCurrencyShort(p.monto || 0),
+                        `${parseFloat(p.avance_total_porcentaje || 0).toFixed(0)}%`
+                    ]);
+                    break;
+
+                case 'professionals':
+                    const professionalData = {};
+                    filteredProjects.forEach(p => {
+                        [p.profesional_1, p.profesional_2, p.profesional_3, p.profesional_4, p.profesional_5]
+                            .filter(Boolean)
+                            .forEach(prof => {
+                                if (!professionalData[prof]) {
+                                    professionalData[prof] = { count: 0, monto: 0, proyectos: [] };
+                                }
+                                professionalData[prof].count++;
+                                professionalData[prof].monto += parseFloat(p.monto) || 0;
+                                professionalData[prof].proyectos.push(p.nombre);
+                            });
+                    });
+                    tableHeaders = [['Profesional', 'Proyectos', 'Inversion Total', 'Carga']];
+                    tableBody = Object.entries(professionalData)
+                        .sort((a, b) => b[1].count - a[1].count)
+                        .map(([prof, data]) => [
+                            prof.substring(0, 30),
+                            data.count.toString(),
+                            formatCurrencyShort(data.monto),
+                            data.count > 5 ? 'Alta' : data.count > 2 ? 'Media' : 'Baja'
+                        ]);
+                    break;
+
+                case 'sector':
+                    const sectorData = {};
+                    filteredProjects.forEach(p => {
+                        const sector = p.sector_nombre || 'Sin sector';
+                        if (!sectorData[sector]) {
+                            sectorData[sector] = { count: 0, monto: 0 };
+                        }
+                        sectorData[sector].count++;
+                        sectorData[sector].monto += parseFloat(p.monto) || 0;
+                    });
+                    tableHeaders = [['Sector/Territorio', 'Proyectos', 'Inversion', '% del Total']];
+                    tableBody = Object.entries(sectorData)
+                        .sort((a, b) => b[1].count - a[1].count)
+                        .map(([sector, data]) => [
+                            sector.substring(0, 35),
+                            data.count.toString(),
+                            formatCurrencyShort(data.monto),
+                            `${((data.count / filteredProjects.length) * 100).toFixed(1)}%`
+                        ]);
+                    break;
+
+                case 'timeline':
+                    tableHeaders = [['Proyecto', 'Ano Elab.', 'Ano Ejec.', 'Estado', 'Avance']];
+                    tableBody = filteredProjects
+                        .sort((a, b) => (b.anno_ejecucion || 0) - (a.anno_ejecucion || 0))
+                        .map(p => [
+                            (p.nombre || '').substring(0, 40),
+                            p.anno_elaboracion || '-',
+                            p.anno_ejecucion || '-',
+                            (p.estado_nombre || '-').substring(0, 15),
+                            `${parseFloat(p.avance_total_porcentaje || 0).toFixed(0)}%`
+                        ]);
+                    break;
+
+                case 'comparison':
+                    const yearData = {};
+                    filteredProjects.forEach(p => {
+                        const year = p.anno_elaboracion || 'Sin ano';
+                        if (!yearData[year]) {
+                            yearData[year] = { count: 0, monto: 0, avance: 0 };
+                        }
+                        yearData[year].count++;
+                        yearData[year].monto += parseFloat(p.monto) || 0;
+                        yearData[year].avance += parseFloat(p.avance_total_porcentaje) || 0;
+                    });
+                    tableHeaders = [['Ano', 'Proyectos', 'Inversion', 'Avance Prom.']];
+                    tableBody = Object.entries(yearData)
+                        .sort((a, b) => (b[0] === 'Sin ano' ? 0 : b[0]) - (a[0] === 'Sin ano' ? 0 : a[0]))
+                        .map(([year, data]) => [
+                            year,
+                            data.count.toString(),
+                            formatCurrencyShort(data.monto),
+                            `${(data.avance / data.count).toFixed(1)}%`
+                        ]);
+                    break;
+
+                default:
+                    tableHeaders = [['Proyecto', 'Area', 'Estado', 'Monto', 'Avance']];
+                    tableBody = filteredProjects.map(p => [
+                        (p.nombre || '').substring(0, 40),
+                        (p.area_nombre || '-').substring(0, 15),
+                        (p.estado_nombre || '-').substring(0, 15),
+                        formatCurrencyShort(p.monto || 0),
+                        `${parseFloat(p.avance_total_porcentaje || 0).toFixed(0)}%`
+                    ]);
+            }
+
+            doc.autoTable({
+                startY: tableY,
+                head: tableHeaders,
+                body: tableBody,
+                theme: 'striped',
+                headStyles: { fillColor: [99, 102, 241], fontStyle: 'bold' },
+                styles: { fontSize: 8, cellPadding: 3 },
+                didDrawPage: function (data) {
+
+                    if (data.pageNumber > 1) {
+                        doc.setFillColor(99, 102, 241);
+                        doc.rect(0, 0, 210, 25, 'F');
+                        doc.setTextColor(255, 255, 255);
+                        doc.setFontSize(14);
+                        doc.text('DETALLE DE PROYECTOS (continuacion)', 20, 16);
+                        doc.setTextColor(0, 0, 0);
+                    }
+                }
+            });
+
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(128);
+                doc.text(
+                    `Municipalidad de Algarrobo - ${reportTitles[type]} - Pagina ${i} de ${pageCount}`,
+                    105, 290, { align: 'center' }
+                );
+                doc.text(
+                    `Generado el ${new Date().toLocaleString('es-CL')}`,
+                    105, 295, { align: 'center' }
+                );
+            }
+
+            doc.save(`informe_${type}_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+
+        function generateExcel(type) {
+            const filteredProjects = getFilteredProjects();
+            const wb = XLSX.utils.book_new();
+
+            const reportTitles = {
+                portfolio: 'Cartera de Proyectos',
+                status: 'Proyectos por Estado',
+                area: 'Proyectos por Area',
+                financial: 'Informe Financiero',
+                progress: 'Avance de Proyectos',
+                priority: 'Proyectos Prioritarios',
+                professionals: 'Carga por Profesional',
+                sector: 'Distribucion por Sector',
+                timeline: 'Cronograma de Proyectos',
+                comparison: 'Comparativo Anual'
+            };
+
+            const totalInversion = filteredProjects.reduce((sum, p) => sum + (parseFloat(p.monto) || 0), 0);
+            const avgProgress = filteredProjects.length > 0
+                ? filteredProjects.reduce((sum, p) => sum + (parseFloat(p.avance_total_porcentaje) || 0), 0) / filteredProjects.length
+                : 0;
+            const prioritarios = filteredProjects.filter(p => p.es_prioridad === 'SI').length;
+
+            const summaryData = [
+                ['GEOPORTAL MUNICIPAL - ILUSTRE MUNICIPALIDAD DE ALGARROBO'],
+                [''],
+                [reportTitles[type] || 'Informe'],
+                [''],
+                ['RESUMEN EJECUTIVO'],
+                [''],
+                ['Metrica', 'Valor'],
+                ['Fecha de Generacion', new Date().toLocaleDateString('es-CL')],
+                ['Total de Proyectos', filteredProjects.length],
+                ['Inversion Total ($)', totalInversion],
+                ['Avance Promedio (%)', (avgProgress > 1 ? avgProgress : avgProgress * 100).toFixed(1)],
+                ['Proyectos Prioritarios', prioritarios],
+                [''],
+                ['DISTRIBUCION POR ESTADO'],
+                ['']
+            ];
+
+            const estadoCounts = {};
+            filteredProjects.forEach(p => {
+                const estado = p.estado_nombre || 'Sin estado';
+                estadoCounts[estado] = (estadoCounts[estado] || 0) + 1;
+            });
+
+            summaryData.push(['Estado', 'Cantidad', 'Porcentaje']);
+            Object.entries(estadoCounts).forEach(([estado, count]) => {
+                summaryData.push([estado, count, `${((count / filteredProjects.length) * 100).toFixed(1)}%`]);
+            });
+
+            summaryData.push([''], ['DISTRIBUCION POR AREA'], ['']);
+            summaryData.push(['Area', 'Cantidad', 'Inversion']);
+
+            const areaCounts = {};
+            filteredProjects.forEach(p => {
+                const area = p.area_nombre || 'Sin area';
+                if (!areaCounts[area]) {
+                    areaCounts[area] = { count: 0, monto: 0 };
+                }
+                areaCounts[area].count++;
+                areaCounts[area].monto += parseFloat(p.monto) || 0;
+            });
+
+            Object.entries(areaCounts).forEach(([area, data]) => {
+                summaryData.push([area, data.count, data.monto]);
+            });
+
+            const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+            summaryWs['!cols'] = [{ wch: 35 }, { wch: 20 }, { wch: 20 }];
+            XLSX.utils.book_append_sheet(wb, summaryWs, 'Resumen Ejecutivo');
+
+            const fullHeaders = [
+                'ID', 'Nombre', 'Codigo', 'Area', 'Estado', 'Etapa',
+                'Financiamiento', 'Monto', 'Avance (%)', 'Prioridad',
+                'Ano Elaboracion', 'Ano Ejecucion', 'Sector', 'Unidad Vecinal',
+                'Profesional 1', 'Profesional 2', 'Profesional 3', 'Profesional 4', 'Profesional 5',
+                'Documentos', 'Planimetrias', 'Topografia', 'Latitud', 'Longitud'
+            ];
+
+            const fullData = filteredProjects.map(p => [
+                p.id,
+                p.nombre || '',
+                p.codigo || '',
+                p.area_nombre || '',
+                p.estado_nombre || '',
+                p.etapa_nombre || '',
+                p.financiamiento_nombre || '',
+                parseFloat(p.monto) || 0,
+                parseFloat(p.avance_total_porcentaje) || 0,
+                p.es_prioridad || 'NO',
+                p.anno_elaboracion || '',
+                p.anno_ejecucion || '',
+                p.sector_nombre || '',
+                p.unidad_vecinal || '',
+                p.profesional_1 || '',
+                p.profesional_2 || '',
+                p.profesional_3 || '',
+                p.profesional_4 || '',
+                p.profesional_5 || '',
+                p.documentos || '',
+                p.planimetrias || '',
+                p.topografia || '',
+                p.latitud || '',
+                p.longitud || ''
+            ]);
+
+            const dataWs = XLSX.utils.aoa_to_sheet([fullHeaders, ...fullData]);
+            dataWs['!cols'] = [
+                { wch: 6 }, { wch: 45 }, { wch: 15 }, { wch: 18 }, { wch: 15 },
+                { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 10 },
+                { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 15 },
+                { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 },
+                { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 }
+            ];
+            XLSX.utils.book_append_sheet(wb, dataWs, 'Datos Completos');
+
+            let analysisData = [];
+            let analysisSheetName = 'Analisis';
+
+            switch (type) {
+                case 'professionals':
+                    analysisSheetName = 'Carga Profesional';
+                    analysisData = [['ANALISIS DE CARGA POR PROFESIONAL'], ['']];
+                    analysisData.push(['Profesional', 'Proyectos Asignados', 'Inversion Total', 'Nivel de Carga', 'Lista de Proyectos']);
+
+                    const profData = {};
+                    filteredProjects.forEach(p => {
+                        [p.profesional_1, p.profesional_2, p.profesional_3, p.profesional_4, p.profesional_5]
+                            .filter(Boolean)
+                            .forEach(prof => {
+                                if (!profData[prof]) profData[prof] = { count: 0, monto: 0, proyectos: [] };
+                                profData[prof].count++;
+                                profData[prof].monto += parseFloat(p.monto) || 0;
+                                profData[prof].proyectos.push(p.nombre);
+                            });
+                    });
+
+                    Object.entries(profData)
+                        .sort((a, b) => b[1].count - a[1].count)
+                        .forEach(([prof, data]) => {
+                            analysisData.push([
+                                prof,
+                                data.count,
+                                data.monto,
+                                data.count > 5 ? 'Alta' : data.count > 2 ? 'Media' : 'Baja',
+                                data.proyectos.slice(0, 5).join('; ') + (data.proyectos.length > 5 ? '...' : '')
+                            ]);
+                        });
+                    break;
+
+                case 'financial':
+                    analysisSheetName = 'Analisis Financiero';
+                    analysisData = [['ANALISIS FINANCIERO DETALLADO'], ['']];
+                    analysisData.push(['Fuente de Financiamiento', 'Proyectos', 'Monto Total', '% del Presupuesto']);
+
+                    const finData = {};
+                    filteredProjects.forEach(p => {
+                        const fin = p.financiamiento_nombre || 'Sin financiamiento';
+                        if (!finData[fin]) finData[fin] = { count: 0, monto: 0 };
+                        finData[fin].count++;
+                        finData[fin].monto += parseFloat(p.monto) || 0;
+                    });
+
+                    Object.entries(finData)
+                        .sort((a, b) => b[1].monto - a[1].monto)
+                        .forEach(([fin, data]) => {
+                            analysisData.push([
+                                fin,
+                                data.count,
+                                data.monto,
+                                `${((data.monto / totalInversion) * 100).toFixed(1)}%`
+                            ]);
+                        });
+                    break;
+
+                case 'comparison':
+                    analysisSheetName = 'Comparativo Anual';
+                    analysisData = [['COMPARATIVO POR ANO DE ELABORACION'], ['']];
+                    analysisData.push(['Ano', 'Proyectos', 'Inversion Total', 'Avance Promedio', 'Prioritarios']);
+
+                    const yearData = {};
+                    filteredProjects.forEach(p => {
+                        const year = p.anno_elaboracion || 'Sin ano';
+                        if (!yearData[year]) yearData[year] = { count: 0, monto: 0, avance: 0, priority: 0 };
+                        yearData[year].count++;
+                        yearData[year].monto += parseFloat(p.monto) || 0;
+                        yearData[year].avance += parseFloat(p.avance_total_porcentaje) || 0;
+                        if (p.es_prioridad === 'SI') yearData[year].priority++;
+                    });
+
+                    Object.entries(yearData)
+                        .sort((a, b) => (b[0] === 'Sin ano' ? 0 : parseInt(b[0])) - (a[0] === 'Sin ano' ? 0 : parseInt(a[0])))
+                        .forEach(([year, data]) => {
+                            analysisData.push([
+                                year,
+                                data.count,
+                                data.monto,
+                                `${(data.avance / data.count).toFixed(1)}%`,
+                                data.priority
+                            ]);
+                        });
+                    break;
+
+                default:
+                    analysisSheetName = 'Estadisticas';
+                    analysisData = [['ESTADISTICAS ADICIONALES'], ['']];
+                    analysisData.push(['Categoria', 'Detalle', 'Valor']);
+                    analysisData.push(['Proyectos', 'Total', filteredProjects.length]);
+                    analysisData.push(['Proyectos', 'Prioritarios', prioritarios]);
+                    analysisData.push(['Financiero', 'Inversion Total', totalInversion]);
+                    analysisData.push(['Financiero', 'Promedio por Proyecto', totalInversion / filteredProjects.length]);
+                    analysisData.push(['Avance', 'Promedio General', `${(avgProgress > 1 ? avgProgress : avgProgress * 100).toFixed(1)}%`]);
+            }
+
+            const analysisWs = XLSX.utils.aoa_to_sheet(analysisData);
+            analysisWs['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 50 }];
+            XLSX.utils.book_append_sheet(wb, analysisWs, analysisSheetName);
+
+            XLSX.writeFile(wb, `informe_${type}_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        function formatCurrency(value) {
+            if (!value && value !== 0) return '$0';
+            return new Intl.NumberFormat('es-CL', {
+                style: 'currency',
+                currency: 'CLP',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(value);
+        }
+
+        function formatCurrencyShort(value) {
+            if (!value && value !== 0) return '$0';
+            if (value >= 1000000000) return `$${(value / 1000000000).toFixed(1)}B`;
+            if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+            if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+            return `$${value}`;
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMessage');
+
+            msg.textContent = message;
+
+            if (type === 'success') {
+                icon.className = 'fas fa-check-circle text-green-500';
+            } else if (type === 'error') {
+                icon.className = 'fas fa-exclamation-circle text-red-500';
+            } else {
+                icon.className = 'fas fa-info-circle text-blue-500';
+            }
+
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+
+</html>

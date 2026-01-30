@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <script src="../../../script/router.js"></script>
+    <script src="../../../script/api.js"></script>
+    <script src="../../../script/utils.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geoportal Municipal - Gestión de Geomapas</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <link rel="stylesheet" href="styles/admin-styles.css">
+
+    <style>
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            animation: fadeIn 0.2s;
+        }
+
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            width: 95%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s;
+            position: relative;
+        }
+
+        .modal-content-viewer {
+            background: white;
+            border-radius: 12px;
+            width: 95%;
+            max-width: 95%;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideUp 0.3s;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+            transition: color 0.2s;
+        }
+
+        .close-btn:hover {
+            color: #1e293b;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: #1e293b;
+        }
+
+        input[type="text"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+
+            border-radius: 0.75rem;
+
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            background-color: #f8fafc;
+            position: relative;
+        }
+
+        .drop-zone:hover {
+            border-color: #10b981;
+
+            background-color: #ecfdf5;
+
+        }
+
+        .drop-zone.drag-over {
+            border-color: #059669;
+
+            background-color: #d1fae5;
+
+            transform: scale(1.01);
+        }
+
+        .drop-zone.has-file {
+            border-style: solid;
+            border-color: #10b981;
+            background-color: white;
+        }
+
+        .drop-zone input[type="file"] {
+            display: none;
+        }
+
+        .file-info-card {
+            display: none;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: #f1f5f9;
+            border-radius: 0.5rem;
+            text-align: left;
+            border: 1px solid #e2e8f0;
+        }
+
+        .drop-zone.has-file .file-info-card {
+            display: block;
+        }
+
+        .drop-zone.has-file .upload-prompt {
+            display: none;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transform: translateX(400px);
+            transition: transform 0.3s;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .toast.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .toast.warning {
+            border-left: 4px solid #f59e0b;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        .loading-dark {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #4f46e5;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        #mapContainer {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: #e2e8f0;
+        }
+
+        .viewer-loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+
+    <div id="headerRender"></div>
+
+    <div class="flex">
+        <div id="asideRender"></div>
+
+        <main class="flex-1 p-6">
+            <div id="mapsView" class="view-content">
+
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Gestión de Geomapas</h2>
+                    <p class="text-gray-600">Repositorio de capas y geojsons SECPLAC</p>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-4 mb-6 border-l-4 border-emerald-500">
+                    <div class="flex flex-col md:flex-row gap-4 justify-between items-end md:items-center">
+                        <div class="w-full md:w-1/3">
+                            <label for="searchInput" class="block text-sm font-medium text-gray-700 mb-1">Buscar
+                                Proyecto</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" id="searchInput"
+                                    class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                                    placeholder="Nombre, código o sector...">
+                            </div>
+                        </div>
+
+                        <div class="flex flex-1 w-full gap-3">
+                            <div class="flex-1">
+                                <label for="filterArea"
+                                    class="block text-sm font-medium text-gray-700 mb-1">Área</label>
+                                <select id="filterArea"
+                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm">
+                                    <option value="">Todas las áreas</option>
+                                </select>
+                            </div>
+                            <div class="flex-1">
+                                <label for="filterStatus"
+                                    class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                                <select id="filterStatus"
+                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm">
+                                    <option value="">Todos los estados</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <button onclick="clearFilters()"
+                                class="mt-6 w-full md:w-auto px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-md hover:bg-gray-200 transition flex items-center justify-center gap-2">
+                                <i class="fas fa-times-circle"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6 mb-6 border border-gray-200">
+                    <div class="flex flex-col md:flex-row gap-4 items-end">
+                        <div class="flex-1 w-full">
+                            <label for="projectSelect" class="block text-sm font-medium text-gray-700 mb-1">
+                                1. Seleccionar Proyecto
+                                <span id="projectCountBadge"
+                                    class="ml-2 text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">0</span>
+                            </label>
+                            <select id="projectSelect"
+                                class="w-full py-3 px-4 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2.5">
+                                <option value="" disabled selected>-- Selecciona un proyecto --</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-2">Al seleccionar, se cargarán los mapas asociados.</p>
+                        </div>
+                        <div class="w-full md:w-auto">
+                            <button onclick="loadProjects()"
+                                class="w-full md:w-auto px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition flex items-center justify-center gap-2">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+                    <div class="lg:col-span-1">
+                        <div class="bg-white rounded-lg shadow p-6 h-full flex flex-col items-center justify-center text-center border border-dashed border-gray-300 hover:border-emerald-500 transition cursor-pointer group"
+                            onclick="openCreateMapModal()">
+                            <div
+                                class="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-emerald-100 transition">
+                                <i class="fas fa-map-marked-alt text-3xl text-emerald-600"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Crear Geomapa</h3>
+                            <p class="text-gray-500 text-sm mb-4">Define una nueva capa GeoJSON para el proyecto.</p>
+                            <span
+                                class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition shadow-md shadow-emerald-200">
+                                Crear Nuevo
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2">
+                        <div class="bg-white rounded-lg shadow overflow-hidden h-full">
+                            <div
+                                class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                                <h3 class="font-semibold text-gray-800">Historial de Creación (Sesión)</h3>
+                                <span id="sessionCount"
+                                    class="text-xs font-medium bg-gray-200 text-gray-600 px-2 py-1 rounded-full">0</span>
+                            </div>
+                            <div class="overflow-x-auto max-h-64 overflow-y-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50 sticky top-0">
+                                        <tr>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Estado</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Mapa</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Proyecto</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Hora</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="uploadLogBody" class="bg-white divide-y divide-gray-200">
+                                        <tr>
+                                            <td colspan="4" class="px-6 py-8 text-center text-sm text-gray-500">
+                                                No hay actividad reciente en esta sesión.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="projectGeomapasPanel" class="hidden bg-white rounded-lg shadow border border-gray-200 fade-in">
+
+                    <div
+                        class="px-6 py-4 border-b border-gray-200 bg-emerald-50 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div>
+                            <h3 class="font-bold text-emerald-900 flex items-center gap-2">
+                                <i class="fas fa-layer-group"></i>
+                                Geomapas del Proyecto
+                                <span id="selectedProjectNameDisplay"
+                                    class="font-normal text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 text-sm"></span>
+                            </h3>
+                            <p class="text-xs text-emerald-600 mt-1">Capas GeoJSON almacenadas en base de datos</p>
+                        </div>
+                        <div>
+                            <button onclick="refreshGeomapas()"
+                                class="w-full md:w-auto px-4 py-2 bg-white border border-emerald-200 text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-50 transition shadow-sm flex items-center justify-center gap-2">
+                                <i class="fas fa-sync-alt"></i> Refrescar Lista
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        ID</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Nombre</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Descripción</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Fecha Creación</th>
+                                    <th
+                                        class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projectGeomapasBody" class="bg-white divide-y divide-gray-200">
+
+                            </tbody>
+                        </table>
+                        <div id="geomapasLoading" class="hidden p-8 text-center">
+                            <i class="fas fa-circle-notch fa-spin text-emerald-500 text-2xl"></i>
+                            <p class="text-sm text-gray-500 mt-2">Cargando mapas...</p>
+                        </div>
+                        <div id="geomapasEmpty" class="hidden p-8 text-center">
+                            <i class="fas fa-map text-gray-300 text-4xl mb-3"></i>
+                            <p class="text-gray-500">Este proyecto aún no tiene geomapas creadas.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="createMapModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Crear Nuevo Geomapa</h2>
+                <button class="close-btn" onclick="closeCreateMapModal()">&times;</button>
+            </div>
+
+            <form id="createMapForm" onsubmit="handleCreateMap(event)">
+
+                <div class="form-group p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <label class="text-xs text-gray-500 uppercase">Proyecto Destino</label>
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-folder text-emerald-500"></i>
+                        <span id="modalProjectName" class="font-medium text-gray-800">Ninguno seleccionado</span>
+                        <input type="hidden" id="createProjectId" name="project_id">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="mapName">Nombre del Mapa *</label>
+                        <input type="text" id="mapName" name="nombre" placeholder="Ej: Límite Urbano Sector A" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="mapDesc">Descripción</label>
+                        <input type="text" id="mapDesc" name="descripcion" placeholder="Referencias breves">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Archivo GeoJSON *</label>
+                    <p class="text-xs text-gray-500 mb-2">Arrastra tu archivo .json o .geojson aquí.</p>
+
+                    <div id="dropZone" class="drop-zone">
+                        <input type="file" id="fileInput" accept=".json,.geojson">
+
+                        <div class="upload-prompt flex flex-col items-center justify-center py-4">
+                            <div
+                                class="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mb-3">
+                                <i class="fas fa-cloud-upload-alt text-3xl"></i>
+                            </div>
+                            <h4 class="text-sm font-semibold text-gray-700">Arrastra el archivo aquí</h4>
+                            <p class="text-xs text-gray-400 mt-1">o haz clic para buscar</p>
+                        </div>
+
+                        <div class="file-info-card flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-blue-100 text-blue-600 p-2 rounded">
+                                    <i class="fas fa-file-code"></i>
+                                </div>
+                                <div>
+                                    <p id="fileNameDisplay"
+                                        class="text-sm font-bold text-gray-800 truncate max-w-[200px]">archivo.json</p>
+                                    <p id="fileStatsDisplay" class="text-xs text-gray-500">0 Features • 0 KB</p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="clearFile()"
+                                class="text-red-400 hover:text-red-600 transition">
+                                <i class="fas fa-times-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer flex justify-end gap-3 mt-6">
+                    <button type="button"
+                        class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                        onclick="closeCreateMapModal()">Cancelar</button>
+                    <button type="submit"
+                        class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition shadow-md shadow-emerald-200 flex items-center"
+                        id="btnSubmitCreate">
+                        <span id="btnCreateText">Guardar Mapa</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="viewerModal" class="modal">
+        <div class="modal-content-viewer">
+            <div class="modal-header">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-map text-emerald-600 text-xl"></i>
+                    <div>
+                        <h2 class="modal-title m-0">Visor Geográfico</h2>
+                        <span id="viewerMapName" class="text-xs text-gray-500 block leading-none mt-1"></span>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="exportCurrentGeoJSON()" id="btnViewerExport"
+                        class="p-2 text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition"
+                        title="Descargar GeoJSON">
+                        <i class="fas fa-file-code"></i>
+                    </button>
+                    <button class="close-btn" onclick="closeViewerModal()" title="Cerrar visor">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 relative bg-gray-800 overflow-hidden">
+
+                <div id="viewerLoading" class="viewer-loading-overlay">
+                    <div class="loading-dark mb-3"></div>
+                    <p class="text-sm text-gray-500">Cargando capa geográfica...</p>
+                </div>
+
+                <div id="mapContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <span id="toastIcon"></span>
+        <span id="toastMessage" class="font-medium text-gray-800"></span>
+    </div>
+
+    <script src="../../../script/layout.js"></script>
+    <script src="../../../script/help.js"></script>
+    <script>document.addEventListener('DOMContentLoaded', () => createHelpButton('geomapas'));</script>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+
+        let allProjects = [];
+        let currentMapData = null;
+        let mapInstance = null;
+        let geoJsonLayer = null;
+        let uploadedGeoJSON = null;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            loadProjects();
+
+            document.getElementById('searchInput').addEventListener('input', applyFilters);
+            document.getElementById('filterArea').addEventListener('change', applyFilters);
+            document.getElementById('filterStatus').addEventListener('change', applyFilters);
+
+            document.getElementById('projectSelect').addEventListener('change', function (e) {
+                const pid = e.target.value;
+                const projectName = e.target.options[e.target.selectedIndex].text;
+
+                if (pid) {
+                    loadProjectGeomapas(pid, projectName);
+                } else {
+                    document.getElementById('projectGeomapasPanel').classList.add('hidden');
+                }
+            });
+
+            initDropZone();
+        });
+
+        function initDropZone() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+
+            dropZone.addEventListener('click', (e) => {
+                if (e.target.closest('button')) return;
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    processFile(e.target.files[0]);
+                }
+            });
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    processFile(files[0]);
+                }
+            });
+        }
+
+        function processFile(file) {
+
+            const validTypes = ['application/json', '.json', '.geojson'];
+            const fileName = file.name.toLowerCase();
+            const isValid = fileName.endsWith('.json') || fileName.endsWith('.geojson');
+
+            if (!isValid) {
+                showToast("Por favor sube un archivo .json o .geojson", "error");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const jsonContent = JSON.parse(e.target.result);
+
+                    if (!jsonContent.type) {
+                        throw new Error("El archivo no parece ser un GeoJSON válido (falta 'type').");
+                    }
+
+                    uploadedGeoJSON = jsonContent;
+
+                    let featureCount = 0;
+                    if (jsonContent.type === 'FeatureCollection' && Array.isArray(jsonContent.features)) {
+                        featureCount = jsonContent.features.length;
+                    } else if (jsonContent.type === 'Feature') {
+                        featureCount = 1;
+                    } else if (jsonContent.type === 'GeometryCollection' && Array.isArray(jsonContent.geometries)) {
+                        featureCount = jsonContent.geometries.length;
+                    }
+
+                    updateDropZoneUI(file.name, file.size, featureCount);
+                    showToast(`Archivo cargado: ${featureCount} elementos`, "success");
+
+                } catch (err) {
+                    console.error(err);
+                    showToast("Error al leer el JSON: " + err.message, "error");
+                    clearFile();
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function updateDropZoneUI(name, size, features) {
+            const dropZone = document.getElementById('dropZone');
+            const nameDisplay = document.getElementById('fileNameDisplay');
+            const statsDisplay = document.getElementById('fileStatsDisplay');
+
+            nameDisplay.textContent = name;
+            statsDisplay.textContent = `${features} Features • ${(size / 1024).toFixed(2)} KB`;
+
+            dropZone.classList.add('has-file');
+        }
+
+        function clearFile() {
+            uploadedGeoJSON = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('dropZone').classList.remove('has-file');
+        }
+
+        async function loadProjects() {
+            const select = document.getElementById('projectSelect');
+            select.innerHTML = '<option value="" disabled selected>Cargando...</option>';
+            select.disabled = true;
+
+            try {
+                allProjects = await api.get('/proyectos');
+
+                updateFilterOptions();
+                applyFilters();
+                select.disabled = false;
+                showToast(`Proyectos cargados: ${allProjects.length}`, "success");
+
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error al conectar con el servidor', 'error');
+                select.innerHTML = '<option value="" disabled selected>Error de conexión</option>';
+            }
+        }
+
+        function populateSelectOptions(selectElementId, optionsList, defaultLabel, currentValue) {
+            const select = document.getElementById(selectElementId);
+            const previousValue = select.value || currentValue;
+
+            let html = `<option value="">${defaultLabel}</option>`;
+            optionsList.forEach(opt => {
+                html += `<option value="${opt}" ${opt === previousValue ? 'selected' : ''}>${opt}</option>`;
+            });
+
+            select.innerHTML = html;
+
+            if (previousValue && !optionsList.includes(previousValue)) {
+                select.value = "";
+            } else if (previousValue) {
+                select.value = previousValue;
+            }
+        }
+
+        function updateFilterOptions() {
+            const selectedArea = document.getElementById('filterArea').value;
+            const selectedStatus = document.getElementById('filterStatus').value;
+
+            const dataForAreas = allProjects.filter(p =>
+                (selectedStatus === '' || p.estado_nombre === selectedStatus)
+            );
+            const uniqueAreas = [...new Set(dataForAreas.map(p => p.area_nombre).filter(Boolean))].sort();
+            populateSelectOptions('filterArea', uniqueAreas, 'Todas las áreas', selectedArea);
+
+            const dataForStatus = allProjects.filter(p =>
+                (selectedArea === '' || p.area_nombre === selectedArea)
+            );
+            const uniqueStatus = [...new Set(dataForStatus.map(p => p.estado_nombre).filter(Boolean))].sort();
+            populateSelectOptions('filterStatus', uniqueStatus, 'Todos los estados', selectedStatus);
+        }
+
+        function applyFilters() {
+            updateFilterOptions();
+
+            const selectedArea = document.getElementById('filterArea').value;
+            const selectedStatus = document.getElementById('filterStatus').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            const filteredProjects = allProjects.filter(proyecto => {
+                const matchesSearch =
+                    (proyecto.nombre && proyecto.nombre.toLowerCase().includes(searchTerm)) ||
+                    (proyecto.codigo && proyecto.codigo.toLowerCase().includes(searchTerm)) ||
+                    (proyecto.sector && proyecto.sector.toLowerCase().includes(searchTerm));
+
+                const matchesArea = selectedArea === '' || proyecto.area_nombre === selectedArea;
+                const matchesStatus = selectedStatus === '' || proyecto.estado_nombre === selectedStatus;
+
+                return matchesSearch && matchesArea && matchesStatus;
+            });
+
+            renderProjectOptions(filteredProjects);
+        }
+
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterArea').value = '';
+            document.getElementById('filterStatus').value = '';
+            applyFilters();
+        }
+
+        function renderProjectOptions(projectList) {
+            const select = document.getElementById('projectSelect');
+            const countBadge = document.getElementById('projectCountBadge');
+
+            const currentVal = select.value;
+
+            select.innerHTML = '<option value="" disabled selected>-- Selecciona un proyecto --</option>';
+
+            projectList.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                const label = p.codigo
+                    ? `[${p.codigo}] ${p.nombre || 'Sin nombre'}`
+                    : `${p.nombre || 'Sin nombre'}`;
+                option.textContent = label;
+                select.appendChild(option);
+            });
+
+            if (currentVal) {
+                select.value = currentVal;
+            }
+
+            countBadge.textContent = projectList.length;
+        }
+
+        async function loadProjectGeomapas(pid, projectName) {
+            const panel = document.getElementById('projectGeomapasPanel');
+            const tbody = document.getElementById('projectGeomapasBody');
+            const loading = document.getElementById('geomapasLoading');
+            const empty = document.getElementById('geomapasEmpty');
+            const nameDisplay = document.getElementById('selectedProjectNameDisplay');
+
+            panel.classList.remove('hidden');
+            nameDisplay.textContent = projectName;
+            tbody.innerHTML = '';
+            loading.classList.remove('hidden');
+            empty.classList.add('hidden');
+
+            try {
+                const data = await api.get(`/proyectos/${pid}/geomapas`);
+                const geomapas = data.geomapas || [];
+
+                loading.classList.add('hidden');
+
+                if (geomapas.length === 0) {
+                    empty.classList.remove('hidden');
+                } else {
+                    geomapas.forEach(geo => {
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-gray-50 transition";
+
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">#${geo.geomapa_id}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex items-center gap-2">
+                                <i class="fas fa-map text-emerald-500"></i>
+                                ${geo.nombre}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500">${geo.descripcion || '-'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                ${new Date(geo.fecha_creacion).toLocaleDateString('es-CL')}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                <button onclick="openMapViewer(${geo.geomapa_id}, '${geo.nombre.replace(/'/g, "\\'")}')" class="text-emerald-600 hover:text-emerald-900 transition mx-1 p-2 rounded-full hover:bg-emerald-50" title="Ver en mapa">
+                                    <i class="fas fa-globe-americas"></i>
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (error) {
+                console.error('Error cargando geomapas:', error);
+                loading.classList.add('hidden');
+                showToast('Error al cargar lista de mapas', 'error');
+                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500">Error de carga</td></tr>';
+            }
+        }
+
+        function refreshGeomapas() {
+            const pid = document.getElementById('projectSelect').value;
+            const select = document.getElementById('projectSelect');
+            const projectName = select.options[select.selectedIndex].text;
+            if (pid) loadProjectGeomapas(pid, projectName);
+        }
+
+        async function openMapViewer(geomapaId, mapName) {
+            const modal = document.getElementById('viewerModal');
+            const loading = document.getElementById('viewerLoading');
+            const nameDisplay = document.getElementById('viewerMapName');
+
+            nameDisplay.textContent = mapName;
+            loading.classList.remove('hidden');
+            modal.classList.add('active');
+
+            document.getElementById('btnViewerExport').onclick = () => exportCurrentGeoJSON(mapName);
+
+            try {
+                const geojson = await api.get(`/geomapas/${geomapaId}/geojson`);
+                currentMapData = geojson;
+                initMap(geojson);
+                loading.classList.add('hidden');
+            } catch (err) {
+                console.error(err);
+                loading.innerHTML = `<div class="text-red-500 text-center"><i class="fas fa-exclamation-triangle text-2xl mb-2"></i><p>${err.message}</p></div>`;
+            }
+        }
+
+        function initMap(geojsonData) {
+            const mapContainer = document.getElementById('mapContainer');
+
+            if (mapInstance) {
+                if (geoJsonLayer) mapInstance.removeLayer(geoJsonLayer);
+            } else {
+                mapInstance = L.map('mapContainer').setView([-33.45, -70.66], 10);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(mapInstance);
+            }
+
+            geoJsonLayer = L.geoJSON(geojsonData, {
+                style: function (feature) {
+                    return {
+                        color: '#059669',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.4
+                    };
+                },
+                onEachFeature: function (feature, layer) {
+                    if (feature.properties) {
+                        let popupContent = '<div class="text-sm">';
+                        for (let key in feature.properties) {
+                            popupContent += `<b>${key}:</b> ${feature.properties[key]}<br>`;
+                        }
+                        popupContent += '</div>';
+                        layer.bindPopup(popupContent);
+                    }
+                }
+            }).addTo(mapInstance);
+
+            if (geoJsonLayer.getBounds().isValid()) {
+                mapInstance.fitBounds(geoJsonLayer.getBounds());
+            }
+
+            setTimeout(() => {
+                mapInstance.invalidateSize();
+            }, 200);
+        }
+
+        function exportCurrentGeoJSON(filename) {
+            if (!currentMapData) {
+                showToast("No hay datos para exportar", "error");
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentMapData));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", (filename || "mapa") + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            showToast("GeoJSON exportado", "success");
+        }
+
+        function closeViewerModal() {
+            const modal = document.getElementById('viewerModal');
+            modal.classList.remove('active');
+        }
+
+        function openCreateMapModal() {
+            const projectId = document.getElementById('projectSelect').value;
+            const select = document.getElementById('projectSelect');
+            const projectText = select.options[select.selectedIndex]?.text;
+
+            if (!projectId) {
+                showToast("Primero debes seleccionar un proyecto de la lista", "warning");
+                const selectContainer = document.getElementById('projectSelect').closest('.bg-white');
+                selectContainer.classList.add('ring-2', 'ring-red-400');
+                setTimeout(() => selectContainer.classList.remove('ring-2', 'ring-red-400'), 1000);
+                return;
+            }
+
+            document.getElementById('createProjectId').value = projectId;
+            document.getElementById('modalProjectName').textContent = projectText;
+
+            document.getElementById('createMapForm').reset();
+            clearFile();
+
+            document.getElementById('createMapModal').classList.add('active');
+        }
+
+        function closeCreateMapModal() {
+            document.getElementById('createMapModal').classList.remove('active');
+        }
+
+        async function handleCreateMap(e) {
+            e.preventDefault();
+
+            const pid = document.getElementById('createProjectId').value;
+            const nombre = document.getElementById('mapName').value;
+            const descripcion = document.getElementById('mapDesc').value;
+
+            if (!uploadedGeoJSON) {
+                showToast("Debes subir un archivo GeoJSON", "error");
+                return;
+            }
+
+            const payload = {
+                nombre: nombre,
+                descripcion: descripcion,
+                geojson: uploadedGeoJSON
+            };
+
+            const btn = document.getElementById('btnSubmitCreate');
+            const originalText = document.getElementById('btnCreateText').textContent;
+            btn.disabled = true;
+            document.getElementById('btnCreateText').innerHTML = '<span class="loading"></span> Guardando...';
+
+            try {
+                const data = await api.post(`/proyectos/${pid}/geomapas`, payload);
+
+                showToast("Geomapa creado exitosamente", "success");
+                addToLog(pid, nombre, "success");
+                closeCreateMapModal();
+                const select = document.getElementById('projectSelect');
+                loadProjectGeomapas(pid, select.options[select.selectedIndex].text);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showToast(`Error al crear: ${error.message}`, "error");
+                addToLog(pid, nombre, "error");
+            } finally {
+                btn.disabled = false;
+                document.getElementById('btnCreateText').textContent = originalText;
+            }
+        }
+
+        function addToLog(projectId, itemName, status) {
+            const tbody = document.getElementById('uploadLogBody');
+            const countBadge = document.getElementById('sessionCount');
+
+            if (tbody.querySelector('td[colspan]')) {
+                tbody.innerHTML = '';
+            }
+
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50 transition animate-fadeIn";
+
+            const badgeClass = status === 'success' ? 'badge-success' : 'badge-pending';
+            const icon = status === 'success' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-exclamation-circle"></i>';
+            const statusText = status === 'success' ? 'Creado' : 'Fallido';
+
+            const select = document.getElementById('projectSelect');
+            const projectName = (status === 'success')
+                ? (Array.from(select.options).find(o => o.value == projectId)?.text || `#${projectId}`)
+                : `#${projectId}`;
+
+            tr.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="badge ${badgeClass}">${icon} ${statusText}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">${itemName}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${projectName}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">${timeString}</td>
+            `;
+
+            tbody.insertBefore(tr, tbody.firstChild);
+
+            let currentCount = parseInt(countBadge.textContent);
+            countBadge.textContent = currentCount + 1;
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toast.className = `toast ${type}`;
+            toastMsg.textContent = message;
+
+            let iconHtml = '';
+            if (type === 'success') iconHtml = '<i class="fas fa-check-circle text-green-500 text-xl"></i>';
+            else if (type === 'error') iconHtml = '<i class="fas fa-times-circle text-red-500 text-xl"></i>';
+            else iconHtml = '<i class="fas fa-exclamation-circle text-yellow-500 text-xl"></i>';
+
+            toastIcon.innerHTML = iconHtml;
+
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 4000);
+        }
+
+        window.onclick = function (event) {
+            const createModal = document.getElementById('createMapModal');
+            const viewerModal = document.getElementById('viewerModal');
+
+            if (event.target === createModal) {
+                closeCreateMapModal();
+            }
+            if (event.target === viewerModal) {
+                closeViewerModal();
+            }
+        }
+    </script>
+</body>
+
+</html>

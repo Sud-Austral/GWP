@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <script src="../../../script/router.js"></script>
+    <script src="../../../script/api.js"></script>
+    <script src="../../../script/utils.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geoportal Municipal - Algarrobo</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <link rel="stylesheet" href="styles/admin-styles.css">
+
+    <style>
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        #map {
+            height: 600px;
+            width: 100%;
+            border-radius: 0.5rem;
+        }
+
+        .custom-popup {
+            font-family: 'Arial', sans-serif;
+        }
+
+        .popup-content {
+            padding: 10px;
+            min-width: 250px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .popup-title {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #1e40af;
+        }
+
+        .popup-info {
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .popup-button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 8px;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        .popup-button:hover {
+            background-color: #2563eb;
+        }
+
+        .filter-button {
+            transition: all 0.2s;
+        }
+
+        .filter-button.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .filter-button:not(.active) {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+
+        .filter-button:hover {
+            transform: translateY(-1px);
+        }
+
+        .legend {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+        }
+
+        .legend-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 3px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        #projectDetailsPanel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+
+            width: 400px;
+            height: 100%;
+            background-color: white;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s ease-in-out;
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        #projectDetailsPanel.show {
+            right: 0;
+
+        }
+
+        .close-panel-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #888;
+        }
+
+        .close-panel-btn:hover {
+            color: #333;
+        }
+
+        .detail-item {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+
+    <div id="headerRender">
+    </div>
+
+    <div class="flex">
+
+        <div id="asideRender">
+
+        </div>
+
+        <main class="flex-1 p-6">
+
+            <div id="mapView" class="view-content">
+
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Mapa de Proyectos</h2>
+                    <p class="text-gray-600">Visualización geográfica de todos los proyectos municipales</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white rounded-lg shadow p-4 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm">Total Proyectos</p>
+                                <p id="totalProjects" class="text-2xl font-bold text-gray-800">-</p>
+                            </div>
+                            <div class="bg-blue-100 p-3 rounded-full">
+                                <i class="fas fa-map-marker-alt text-blue-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-4 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm">Vialidad</p>
+                                <p id="vialidadProjects" class="text-2xl font-bold text-gray-800">-</p>
+                            </div>
+                            <div class="bg-green-100 p-3 rounded-full">
+                                <i class="fas fa-road text-green-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-4 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm">Saneamiento</p>
+                                <p id="saneamientoProjects" class="text-2xl font-bold text-gray-800">-</p>
+                            </div>
+                            <div class="bg-blue-100 p-3 rounded-full">
+                                <i class="fas fa-tint text-blue-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-4 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm">Espacios Públicos</p>
+                                <p id="espaciosPublicosProjects" class="text-2xl font-bold text-gray-800">-</p>
+                            </div>
+                            <div class="bg-green-100 p-3 rounded-full">
+                                <i class="fas fa-tree text-green-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-4">
+
+                    <div id="mapFilters" class="mb-4 flex flex-wrap gap-2">
+
+                        <button onclick="filterMapByArea('all')"
+                            class="filter-button active px-4 py-2 rounded">Todos</button>
+                    </div>
+
+                    <div id="map"></div>
+                </div>
+
+                <div class="mt-6 bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold mb-4">Proyectos en Mapa</h3>
+                    <div id="mapProjectsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="projectDetailsPanel">
+        <button class="close-panel-btn" onclick="closeProjectDetails()">&times;</button>
+        <h2 class="text-xl font-bold mb-4">Detalles del Proyecto</h2>
+        <div id="projectDetailsContent">
+
+        </div>
+    </div>
+
+    <script src="../../../script/layout.js"></script>
+    <script src="../../../script/help.js"></script>
+    <script>document.addEventListener('DOMContentLoaded', () => createHelpButton('mapa'));</script>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+
+        const BASE_URL = 'https://186.67.61.251:8000';
+
+        let map;
+        let markers = [];
+        let allProjects = [];
+        let currentFilter = 'all';
+
+        const areaColors = {
+            'Vialidad': '#3B82F6',
+            'Saneamiento': '#06B6D4',
+            'Espacios Públicos': '#10B981',
+            'Educación': '#8B5CF6',
+            'Salud': '#EF4444',
+            'Planificación': '#F59E0B',
+            'default': '#6B7280'
+        };
+
+        function getAreaColor(area) {
+            return areaColors[area] || areaColors['default'];
+        }
+
+        function formatKey(key) {
+            return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        function formatValue(key, value) {
+            if (value === null || value === '-') {
+                return 'No especificado';
+            }
+            if (key.includes('fecha')) {
+
+                try {
+                    return new Date(value).toLocaleDateString('es-CL');
+                } catch (e) {
+                    return value;
+                }
+            }
+            if (key.includes('monto')) {
+                try {
+                    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value);
+                } catch (e) {
+                    return value;
+                }
+            }
+            return value;
+        }
+
+        async function fetchProjects() {
+            try {
+
+                const token = localStorage.getItem('authToken');
+
+                if (!token) {
+                    throw new Error('Token de autenticación no encontrado. Por favor, inicie sesión nuevamente.');
+                }
+
+                const response = await fetch(`${BASE_URL}/proyectos`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': token,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error('No autorizado. Su sesión ha expirado o el token es inválido.');
+                    }
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+
+                allProjects = await response.json();
+                console.log("Proyectos cargados:", allProjects);
+                initializeApp();
+            } catch (error) {
+                console.error("No se pudieron cargar los proyectos:", error);
+
+                const mapContainer = document.getElementById('map');
+                if (mapContainer) {
+                    mapContainer.innerHTML = `<div class="flex justify-center items-center h-full text-center p-4"><p class="text-red-500 font-semibold">Error al cargar los proyectos.</p><p class="text-gray-600">${error.message}</p></div>`;
+                }
+
+                if (error.message.includes('No autorizado') || error.message.includes('Token de autenticación no encontrado')) {
+
+                    localStorage.removeItem('isLoggedIn');
+                    localStorage.removeItem('authToken');
+                    window.location.href = '../../index.html';
+                }
+            }
+        }
+
+        function initializeApp() {
+            initializeMap();
+            createFilterButtons();
+            updateStatsCards();
+            loadMapProjectsList();
+        }
+
+        function initializeMap() {
+
+            map = L.map('map').setView([-33.366677, -71.673103], 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            const validProjects = allProjects.filter(project => project.latitud && project.longitud);
+
+            validProjects.forEach(project => {
+                const lat = parseFloat(project.latitud);
+                const lng = parseFloat(project.longitud);
+
+                let popupContent = `<div class="popup-content">`;
+                popupContent += `<div class="popup-title">${project.nombre}</div>`;
+
+                Object.keys(project).forEach(key => {
+
+                    const value = formatValue(key, project[key]);
+                    popupContent += `<div class="popup-info"><strong>${formatKey(key)}:</strong> ${value}</div>`;
+                });
+
+                popupContent += `
+                    <button class="popup-button" onclick="showProjectDetailsFromMap(${project.id})">
+                        <i class="fas fa-info-circle mr-1"></i> Ver detalles completos
+                    </button>
+                </div>`;
+
+                const iconColor = getAreaColor(project.area_nombre);
+                const customIcon = L.divIcon({
+                    html: `<div style="background-color: ${iconColor}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10],
+                    popupAnchor: [0, -10],
+                    className: 'custom-div-icon'
+                });
+
+                const marker = L.marker([lat, lng], { icon: customIcon })
+                    .addTo(map)
+                    .bindPopup(popupContent, {
+                        maxWidth: 350,
+                        className: 'custom-popup'
+                    });
+
+                marker.area = project.area_nombre;
+                marker.projectId = project.id;
+                markers.push(marker);
+            });
+
+            addLegend();
+        }
+
+        function createFilterButtons() {
+            const filterContainer = document.getElementById('mapFilters');
+            filterContainer.innerHTML = '';
+
+            const allButton = document.createElement('button');
+            allButton.textContent = 'Todos';
+            allButton.className = 'filter-button active px-4 py-2 rounded';
+            allButton.onclick = () => filterMapByArea('all');
+            filterContainer.appendChild(allButton);
+
+            const uniqueAreas = [...new Set(allProjects.map(p => p.area_nombre))].sort();
+
+            uniqueAreas.forEach(area => {
+                const button = document.createElement('button');
+                button.textContent = area;
+                button.className = 'filter-button px-4 py-2 rounded';
+                button.onclick = () => filterMapByArea(area);
+                filterContainer.appendChild(button);
+            });
+        }
+
+        function updateStatsCards() {
+            const totalProjectsCount = allProjects.length;
+
+            const vialidadCount = allProjects.filter(p => p.area_nombre === 'Vialidad').length;
+            const saneamientoCount = allProjects.filter(p => p.area_nombre === 'Saneamiento').length;
+            const espaciosPublicosCount = allProjects.filter(p => p.area_nombre === 'Espacios Públicos').length;
+
+            document.getElementById('totalProjects').textContent = totalProjectsCount;
+            document.getElementById('vialidadProjects').textContent = vialidadCount;
+            document.getElementById('saneamientoProjects').textContent = saneamientoCount;
+            document.getElementById('espaciosPublicosProjects').textContent = espaciosPublicosCount;
+        }
+
+        function addLegend() {
+
+            if (window.mapLegend) {
+                map.removeControl(window.mapLegend);
+            }
+
+            const legend = L.control({ position: 'bottomright' });
+
+            legend.onAdd = function (map) {
+                const div = L.DomUtil.create('div', 'legend');
+                div.innerHTML = '<div class="legend-title">Áreas de Proyecto</div>';
+
+                const uniqueAreas = [...new Set(allProjects.map(p => p.area_nombre))].sort();
+
+                uniqueAreas.forEach(area => {
+                    const color = getAreaColor(area);
+                    div.innerHTML += `
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: ${color}"></div>
+                            <span>${area}</span>
+                        </div>
+                    `;
+                });
+
+                return div;
+            };
+
+            window.mapLegend = legend;
+            legend.addTo(map);
+        }
+
+        function filterMapByArea(area) {
+
+            document.querySelectorAll('.filter-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            markers.forEach(marker => {
+                map.removeLayer(marker);
+            });
+
+            if (area === 'all') {
+                markers.forEach(marker => {
+                    marker.addTo(map);
+                });
+            } else {
+                markers.forEach(marker => {
+                    if (marker.area === area) {
+                        marker.addTo(map);
+                    }
+                });
+            }
+
+            loadMapProjectsList(area);
+        }
+
+        function resetMapView() {
+            map.setView([-33.366677, -71.673103], 13);
+
+            document.querySelectorAll('.filter-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            document.querySelector('.filter-button').classList.add('active');
+
+            markers.forEach(marker => {
+                marker.addTo(map);
+            });
+
+            loadMapProjectsList('all');
+        }
+
+        function toggleMapFullscreen() {
+            const mapContainer = document.getElementById('map');
+
+            if (!document.fullscreenElement) {
+                mapContainer.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function loadMapProjectsList(filterArea = 'all') {
+            const listContainer = document.getElementById('mapProjectsList');
+            listContainer.innerHTML = '';
+
+            let filteredProjects = allProjects;
+            if (filterArea !== 'all') {
+
+                filteredProjects = allProjects.filter(project => project.area_nombre === filterArea);
+            }
+
+            const validProjects = filteredProjects.filter(project => project.latitud && project.longitud);
+
+            validProjects.forEach(project => {
+                const projectCard = document.createElement('div');
+                projectCard.className = 'bg-gray-50 rounded-lg p-4 hover:bg-gray-100 cursor-pointer transition';
+                projectCard.onclick = () => focusProjectOnMap(project.id);
+
+                const areaColor = getAreaColor(project.area_nombre);
+
+                projectCard.innerHTML = `
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0">
+                            <div style="background-color: ${areaColor}; width: 12px; height: 12px; border-radius: 50%; margin-top: 5px;"></div>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-800">${project.nombre}</h4>
+                            <p class="text-sm text-gray-600">${project.area_nombre}</p>
+                            <div class="mt-2 flex justify-between items-center">
+                                <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">${project.estado_nombre || 'Sin estado'}</span>
+                                <span class="text-xs text-gray-500">${parseFloat(project.avance_total_porcentaje || 0) * 100}% avance</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                listContainer.appendChild(projectCard);
+            });
+        }
+
+        function focusProjectOnMap(projectId) {
+            const project = allProjects.find(p => p.id === projectId);
+            if (project && project.latitud && project.longitud) {
+                const lat = parseFloat(project.latitud);
+                const lng = parseFloat(project.longitud);
+                map.setView([lat, lng], 16);
+
+                markers.forEach(marker => {
+                    if (marker.projectId === projectId) {
+                        marker.openPopup();
+                    }
+                });
+            }
+        }
+
+        function showProjectDetailsFromMap(projectId) {
+            const project = allProjects.find(p => p.id === projectId);
+            if (!project) return;
+
+            const panel = document.getElementById('projectDetailsPanel');
+            const content = document.getElementById('projectDetailsContent');
+
+            content.innerHTML = '';
+
+            const title = document.createElement('h3');
+            title.className = 'text-lg font-bold mb-4';
+            title.textContent = project.nombre;
+            content.appendChild(title);
+
+            Object.keys(project).forEach(key => {
+
+                const detailItem = document.createElement('div');
+                detailItem.className = 'detail-item';
+
+                const label = document.createElement('span');
+                label.className = 'detail-label';
+                label.textContent = `${formatKey(key)}: `;
+
+                const value = document.createElement('span');
+                value.textContent = formatValue(key, project[key]);
+
+                detailItem.appendChild(label);
+                detailItem.appendChild(value);
+                content.appendChild(detailItem);
+            });
+
+            panel.classList.add('show');
+        }
+
+        function closeProjectDetails() {
+            const panel = document.getElementById('projectDetailsPanel');
+            panel.classList.remove('show');
+        }
+
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        function changeRole(role) {
+            localStorage.setItem('userRole', role);
+            showToast(`Rol cambiado a ${role}`, 'info');
+            location.reload();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            checkLoginStatus();
+            fetchProjects();
+        });
+    </script>
+</body>
+
+</html>
