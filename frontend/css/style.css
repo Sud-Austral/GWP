@@ -820,4 +820,208 @@ body {
 .clean-filters-btn:hover {
     background: #e2e8f0;
     color: var(--text-primary);
+}/* ==========================================================================
+   PREMIUM DASHBOARD OVERRIDE - V2
+   ========================================================================== */
+
+/* 1. Global Typography & Colors */
+:root {
+  --gradient-primary: linear-gradient(135deg, #4361EE 0%, #3F37C9 100%);
+  --shadow-premium: 0 10px 30px -10px rgba(67, 97, 238, 0.4);
+  --radius-xl: 16px;
+}
+
+/* 2. Modern Tables */
+.table-container {
+    background: white;
+    border-radius: var(--radius-xl);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    border: 1px solid #f1f5f9;
+    padding: 0;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+thead {
+    background: #f8fafc;
+}
+
+thead th {
+    background: #f8fafc; /* Fallback */
+    background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+    color: #475569;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 16px 20px;
+    border-bottom: 2px solid #e2e8f0;
+    text-align: left;
+}
+
+tbody tr {
+    transition: all 0.2s;
+    background: white;
+}
+
+tbody tr:hover {
+    background-color: #f8fafc !important;
+}
+
+tbody td {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+
+/* 3. Status Badges (Pills) */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.badge-gray { background: #f1f5f9; color: #64748b; }
+.badge-green { background: #dcfce7; color: #16a34a; }
+.badge-blue { background: #dbeafe; color: #2563eb; }
+.badge-red { background: #fee2e2; color: #dc2626; }
+.badge-yellow { background: #fef9c3; color: #ca8a04; }
+.badge-purple { background: #f3e8ff; color: #9333ea; }
+
+/* 4. Action Buttons (Grid/Table) */
+.btn-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+}
+
+.btn-icon:hover {
+    background: #e0f2fe;
+    color: #0284c7;
+    transform: translateY(-1px);
+}
+
+.btn-icon.text-red-500:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+/* 5. Main Card Containers */
+.card, .stat-card, .filter-bar {
+    border-radius: var(--radius-xl);
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    background: white;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+/* 6. Form Elements */
+input[type='text'], input[type='date'], select, textarea {
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    padding: 10px 14px;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    background: #f8fafc;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: #4361EE;
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    outline: none;
+    background: white;
+}
+
+/* 7. Buttons Primary */
+.btn-primary {
+    background: var(--gradient-primary);
+    border: none;
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+    border-radius: 12px;
+    font-weight: 600;
+    padding: 10px 24px;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(67, 97, 238, 0.4);
+}
+
+.btn-secondary {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none; 
+}
+
+.btn-secondary:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #1e293b;
+}
+
+/* 8. Modal Backdrop & Content */
+.modal {
+    backdrop-filter: blur(4px);
+    background-color: rgba(15, 23, 42, 0.4);
+}
+
+.modal-content {
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255,255,255,0.8);
+    overflow: auto; 
+}
+
+/* 9. Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent; 
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1; 
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; 
 }

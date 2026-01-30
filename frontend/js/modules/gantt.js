@@ -16,14 +16,11 @@ const GanttModule = {
         const container = document.getElementById('ganttChart');
         container.innerHTML = '<div class="text-center p-4">Cargando...</div>';
 
-        // NOTE: Old listener attachment removed as setupCascadingFilters handles it.
+        // Always fetch fresh data to define single source of truth from Server
+        const data = await API.get('/plan-maestro');
+        window.appData = window.appData || {};
+        window.appData.plan = data;
 
-        let data = window.appData?.plan;
-        if (!data) {
-            data = await API.get('/plan-maestro');
-            window.appData = window.appData || {};
-            window.appData.plan = data;
-        }
         GanttModule.state.data = data || [];
 
         // Cascading Filters
@@ -194,7 +191,7 @@ const GanttModule = {
 
         return `
             <div class="gantt-row-group" style="display: contents;">
-                 <div class="gantt-activity-cell" onclick="PlanModule.edit(${item.id})" style="cursor: pointer;">
+                 <div class="gantt-activity-cell" onclick="PlanModule.viewDetails(${item.id})" style="cursor: pointer;">
                     <div class="activity-info">
                         <span class="activity-code">${item.activity_code.substring(0, 12)}</span>
                         <span class="activity-name">${item.task_name}</span>
@@ -207,7 +204,7 @@ const GanttModule = {
                           style="left: ${leftPct}%; width: ${Math.max(0.5, widthPct)}%; z-index: 2;"
                           onmouseenter="GanttModule.showTooltip(event, '${item.task_name}', '${Utils.formatDate(item.fecha_inicio)}', '${Utils.formatDate(item.fecha_fin)}', '${item.status}', '${item.primary_responsible}')"
                           onmouseleave="GanttModule.hideTooltip()"
-                          onclick="PlanModule.edit(${item.id})"
+                          onclick="PlanModule.viewDetails(${item.id})"
                      >
                         ${durationText}
                      </div>

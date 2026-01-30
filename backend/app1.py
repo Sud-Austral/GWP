@@ -2,6 +2,7 @@
 import os
 import traceback
 import time
+import uuid
 import psycopg2
 import psycopg2.pool
 import psycopg2.extras
@@ -377,6 +378,55 @@ def create_hito(current_user_id):
     finally:
         if conn: release_db_connection(conn)
 
+@app.route("/hitos/<int:hito_id>", methods=["PUT", "DELETE"])
+@session_required
+def update_delete_hito(current_user_id, hito_id):
+    conn = None
+    try:
+        conn = get_db_connection()
+        if request.method == "DELETE":
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM hitos WHERE id = %s", (hito_id,))
+                conn.commit()
+            return jsonify({"message": "Hito eliminado"})
+        
+        elif request.method == "PUT":
+            data = request.json
+            fields = []
+            values = []
+            
+            if "nombre" in data:
+                fields.append("nombre = %s")
+                values.append(data["nombre"])
+            if "fecha_estimada" in data:
+                fields.append("fecha_estimada = %s")
+                values.append(data["fecha_estimada"])
+            if "descripcion" in data:
+                fields.append("descripcion = %s")
+                values.append(data["descripcion"])
+            if "estado" in data:
+                fields.append("estado = %s")
+                values.append(data["estado"])
+                
+            if not fields:
+                return jsonify({"message": "Nada que actualizar"}), 200
+                
+            fields.append("updated_by = %s")
+            values.append(current_user_id)
+            values.append(hito_id)
+            
+            with conn.cursor() as cur:
+                cur.execute(f"UPDATE hitos SET {', '.join(fields)} WHERE id = %s", tuple(values))
+                conn.commit()
+            return jsonify({"message": "Hito actualizado"})
+            
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: release_db_connection(conn)
+
+
 # -----------------------
 # UPLOAD (Simulada)
 # -----------------------
@@ -404,6 +454,30 @@ def get_all_docs(current_user_id):
     finally:
         if conn: release_db_connection(conn)
 
+@app.route("/plan-maestro/<int:plan_id>/documentos", methods=["GET"])
+@session_required
+def get_plan_docs(current_user_id, plan_id):
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            # Simple query debugged
+            cur.execute("""
+                SELECT d.id, d.nombre_archivo, d.ruta_archivo, d.created_at, d.uploaded_by,
+                       u.username as uploader
+                FROM documentos d
+                LEFT JOIN usuarios u ON d.uploaded_by = u.id
+                WHERE d.plan_maestro_id = %s
+                ORDER BY d.created_at DESC
+            """, (plan_id,))
+            rows = cur.fetchall()
+        return jsonify(rows)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: release_db_connection(conn)
+
 @app.route("/upload", methods=["POST"])
 @session_required
 def upload_file(current_user_id):
@@ -416,14 +490,15 @@ def upload_file(current_user_id):
         if file.filename == '':
             return jsonify({"error": "No selected file"}), 400
 
-        filename = secure_filename(file.filename)
-        # Unique filename to avoid collisions? optionally prepend timestamp or uuid
-        # For simplicity we use original secured name but watch out for duplicates
-        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        original_filename = secure_filename(file.filename)
+        
+        # Generate unique physical filename to prevent conflicts
+        unique_filename = f"{uuid.uuid4().hex}_{original_filename}"
+        
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         file.save(save_path)
         
-        # Web accessible path (we will create an endpoint for this)
-        web_path = filename 
+        # In DB: nombre_archivo is display name, ruta_archivo is physical unique name
         
         conn = get_db_connection()
         with conn.cursor() as cur:
@@ -432,7 +507,7 @@ def upload_file(current_user_id):
                     plan_maestro_id, nombre_archivo, ruta_archivo,
                     uploaded_by
                 ) VALUES (%s, %s, %s, %s) RETURNING id
-            """, (plan_id, filename, web_path, current_user_id))
+            """, (plan_id, original_filename, unique_filename, current_user_id))
             
             doc_id = cur.fetchone()[0]
             
@@ -441,12 +516,54 @@ def upload_file(current_user_id):
             
             conn.commit()
             
-        return jsonify({"message": "Archivo subido", "doc_id": doc_id})
+        return jsonify({"message": "Archivo subido"}), 201
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)
+
+@app.route("/documentos/<int:doc_id>", methods=["DELETE"])
+@session_required
+def delete_document(current_user_id, doc_id):
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            # 1. Get info
+            cur.execute("SELECT ruta_archivo, plan_maestro_id FROM documentos WHERE id = %s", (doc_id,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"error": "Documento no encontrado"}), 404
+            
+            filename = row[0]
+            plan_id = row[1]
+            
+            # 2. Delete file
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except:
+                    pass 
+            
+            # 3. Delete DB record
+            cur.execute("DELETE FROM documentos WHERE id = %s", (doc_id,))
+            
+            # 4. Check if Plan still has docs
+            cur.execute("SELECT COUNT(*) FROM documentos WHERE plan_maestro_id = %s", (plan_id,))
+            count = cur.fetchone()[0]
+            if count == 0:
+                cur.execute("UPDATE plan_maestro SET has_file_uploaded = FALSE WHERE id = %s", (plan_id,))
+                
+            conn.commit()
+            
+        return jsonify({"message": "Documento eliminado"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: release_db_connection(conn)
+
 
 @app.route('/uploads/<path:filename>')
 def download_file(filename):

@@ -78,7 +78,7 @@ const CalendarModule = {
         // Group by Month (YYYY-MM to sort correctly)
         const groups = {};
         CalendarModule.events.forEach(e => {
-            const key = `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, '0')}`;
+            const key = `${e.date.getUTCFullYear()}-${String(e.date.getUTCMonth() + 1).padStart(2, '0')}`;
             if (!groups[key]) groups[key] = [];
             groups[key].push(e);
         });
@@ -89,7 +89,8 @@ const CalendarModule = {
         Object.keys(groups).sort().forEach(key => { // ISO keys sort correctly
             const monthEvents = groups[key];
             const dateObj = monthEvents[0].date;
-            const monthName = dateObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            // Use UTC timezone for display
+            const monthName = dateObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
             html += `
                 <div style="background:white; border:1px solid #e2e8f0; border-radius:1rem; padding:1.5rem; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
@@ -117,7 +118,7 @@ const CalendarModule = {
         // Group by Day
         const days = {};
         CalendarModule.events.forEach(e => {
-            const key = `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, '0')}-${String(e.date.getDate()).padStart(2, '0')}`;
+            const key = `${e.date.getUTCFullYear()}-${String(e.date.getUTCMonth() + 1).padStart(2, '0')}-${String(e.date.getUTCDate()).padStart(2, '0')}`;
             if (!days[key]) days[key] = [];
             days[key].push(e);
         });
@@ -128,14 +129,16 @@ const CalendarModule = {
             const dayEvents = days[dayKey];
             const dateObj = dayEvents[0].date;
 
-            // Format: "Lunes, 25 de Enero"
-            const dayLabel = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+            // Format: "Lunes, 25 de Enero" (Using UTC)
+            const dayLabel = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+            // Secondary format also UTC
+            const shortDate = dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', timeZone: 'UTC' });
 
             html += `
                 <div style="display:flex; gap:1.5rem;">
                      <div style="flex:0 0 120px; text-align:right; padding-top:1rem;">
                         <div style="font-weight:700; text-transform:capitalize; font-size:1rem; color:#334155;">${dayLabel.split(',')[0]}</div>
-                        <div style="font-size:0.9rem; color:#64748b;">${dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</div>
+                        <div style="font-size:0.9rem; color:#64748b;">${shortDate}</div>
                      </div>
                      
                      <div style="flex:1; border-left: 2px solid #e2e8f0; padding-left:1.5rem; padding-bottom:1.5rem;">
@@ -163,7 +166,7 @@ const CalendarModule = {
                 <div style="color:${color}; margin-top:2px;">${icon}</div>
                 <div>
                      <div style="font-size:0.75rem; font-weight:700; color:${color}; margin-bottom:2px;">
-                        ${isAgenda ? '' : `Día ${e.date.getDate()} - `} ${e.code || 'S/C'}
+                        ${isAgenda ? '' : `Día ${e.date.getUTCDate()} - `} ${e.code || 'S/C'}
                      </div>
                      <div style="font-size:0.9rem; font-weight:600; color:#1e293b; line-height:1.2;">${e.title}</div>
                      <div style="font-size:0.75rem; color:#64748b; margin-top:2px;">${isHito ? 'Hito Importante' : 'Entrega Actividad'}</div>

@@ -60,14 +60,19 @@
             <!-- VIEW: Plan Maestro -->
             <section id="view-plan" class="view-section active">
                 <header class="page-header">
-                    <h1 class="page-title">Plan Maestro</h1>
-                    <button class="btn btn-primary" id="btnNewActivity">
-                        <i class="fas fa-plus"></i> Nueva Actividad
-                    </button>
+                    <h1 class="page-title">Gestión de Actividades</h1>
+                    <div class="flex gap-2">
+                        <button class="btn btn-secondary btn-sm" onclick="PlanModule.loadData()" title="Recargar datos">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="btn btn-primary" id="btnNewActivity">
+                            <i class="fas fa-plus"></i> Nueva Actividad
+                        </button>
+                    </div>
                 </header>
 
                 <!-- Filter Card -->
-                <div class="filter-card">
+                <div class="filter-bar">
                     <div class="filter-group search-group">
                         <label class="filter-label">Buscar Actividad</label>
                         <input type="text" id="searchPlan" placeholder="Nombre, código..." class="form-input">
@@ -106,8 +111,8 @@
                 </div>
                 <div id="activeFilters" class="mb-4 flex gap-2"></div>
 
-                <div class="data-table-container">
-                    <table class="data-table">
+                <div class="table-container">
+                    <table class="data-table" id="planTable">
                         <thead>
                             <tr>
                                 <th>Código</th>
@@ -221,6 +226,7 @@
                                 <th>Fecha Estimada</th>
                                 <th>Tarea Asociada</th>
                                 <th>Estado</th>
+                                <th>Acción</th>
                             </tr>
                         </thead>
                         <tbody id="hitosTableBody"></tbody>
@@ -259,8 +265,8 @@
                     </div>
                 </div>
 
-                <div class="data-table-container">
-                    <table class="data-table">
+                <div class="table-container">
+                    <table class="data-table" id="docsTable">
                         <thead>
                             <tr>
                                 <th>Archivo</th>
@@ -340,12 +346,47 @@
                         <option value="Completado">Completado</option>
                     </select>
                 </div>
+
+                <!-- Expanded Fields -->
                 <div class="form-group">
-                    <label class="form-label">Inicio</label>
+                    <label class="form-label">Rol Principal</label>
+                    <input type="text" id="actRole" class="form-input" placeholder="Ej: Coordinador">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Co-Responsables</label>
+                    <input type="text" id="actCoResp" class="form-input" placeholder="Ej: Juan, Maria">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Semana Inicio</label>
+                    <input type="number" id="actWeekStart" class="form-input" placeholder="1-52">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Semana Fin</label>
+                    <input type="number" id="actWeekEnd" class="form-input" placeholder="1-52">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Etiqueta (Tipo)</label>
+                    <input type="text" id="actTypeTag" class="form-input" placeholder="Ej: Taller">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Cód. Dependencia</label>
+                    <input type="text" id="actDepCode" class="form-input" placeholder="Ej: F-2.1-01">
+                </div>
+
+                <div class="full-width form-group">
+                    <label class="form-label">Req. Evidencia</label>
+                    <input type="text" id="actEvidence" class="form-input"
+                        placeholder="Ej: Lista Asistencia, Informe...">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Fecha Inicio</label>
                     <input type="date" id="actStart" class="form-input">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Fin</label>
+                    <label class="form-label">Fecha Fin</label>
                     <input type="date" id="actEnd" class="form-input">
                 </div>
                 <div class="full-width">
@@ -390,6 +431,43 @@
                     <button class="btn btn-sm btn-secondary" style="width:100%; border:1px solid #cbd5e1;"
                         onclick="PlanModule.addHito()">+ Guardar Hito</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nuevo Modal de Detalle (Mirar) -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content" style="max-width: 800px; display:flex; flex-direction:column; max-height:90vh;">
+            <header class="modal-header">
+                <h2 class="modal-title" id="detailModalTitle">Detalle Plan Maestro</h2>
+                <button class="close-btn" data-modal="detailModal">&times;</button>
+            </header>
+
+            <div style="flex:1; overflow-y:auto; padding:1.5rem;">
+                <!-- Info General -->
+                <div id="detailGeneral" class="grid grid-cols-2 gap-4 mb-6" style="font-size:0.9rem;"></div>
+
+                <!-- Hitos -->
+                <h3
+                    style="font-weight:700; font-size:1.1rem; color:#1e293b; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:12px;">
+                    Hitos Asociados
+                </h3>
+                <div id="detailHitosList" class="mb-8 p-4 bg-slate-50 rounded">
+                    <span class="text-slate-400 italic">Cargando...</span>
+                </div>
+
+                <!-- Documentos -->
+                <h3
+                    style="font-weight:700; font-size:1.1rem; color:#1e293b; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:12px;">
+                    Documentos / Evidencia
+                </h3>
+                <div id="detailDocsList" class="p-4 bg-slate-50 rounded">
+                    <span class="text-slate-400 italic">Cargando...</span>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="padding:1rem; border-top:1px solid #e2e8f0; text-align:right;">
+                <button class="btn btn-secondary close-btn" data-modal="detailModal">Cerrar</button>
             </div>
         </div>
     </div>
@@ -447,7 +525,7 @@
                     <label class="form-label">Descripción</label>
                     <textarea id="hitoGlobalDesc" class="form-textarea" rows="2"></textarea>
                 </div>
-                <button type="submit" class="btn btn-primary w-full">Crear Hito</button>
+                <button type="submit" class="btn btn-primary w-full">Actualizar</button>
             </form>
         </div>
     </div>

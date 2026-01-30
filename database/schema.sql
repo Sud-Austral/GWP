@@ -89,3 +89,25 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_usuarios_modtime BEFORE UPDATE ON usuarios FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 CREATE TRIGGER update_plan_maestro_modtime BEFORE UPDATE ON plan_maestro FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 CREATE TRIGGER update_hitos_modtime BEFORE UPDATE ON hitos FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+
+
+CREATE OR REPLACE FUNCTION actualizar_plan_maestro_por_fecha()
+RETURNS void AS $$
+BEGIN
+    UPDATE plan_maestro
+    SET status = 'En Progreso',
+        updated_at = NOW()
+    WHERE
+        status = 'Pendiente'
+        AND fecha_fin IS NOT NULL
+        AND CURRENT_DATE > fecha_fin;
+END;
+$$ LANGUAGE plpgsql;
+
+
+SELECT cron.schedule(
+    'actualizar-plan-maestro',
+    '0 0 * * *', -- cada hora (puedes cambiarlo)
+    $$SELECT actualizar_plan_maestro_por_fecha();$$
+);

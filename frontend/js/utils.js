@@ -12,7 +12,30 @@ const Utils = {
     formatDate: (dateString) => {
         if (!dateString) return '-';
         const date = new Date(dateString);
-        return isNaN(date) ? dateString : date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        if (isNaN(date)) return dateString;
+        // Use UTC methods to avoid timezone shifting
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const year = date.getUTCFullYear();
+        return `${day}/${month}/${year}`;
+    },
+
+    // NEW: Helper for date inputs (YYYY-MM-DD)
+    formatDateForInput: (dateInput) => {
+        if (!dateInput) return '';
+        // Check if it matches simplistic YYYY-MM-DD to avoid Date parsing issues
+        if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+            return dateInput;
+        }
+
+        const date = new Date(dateInput);
+        if (isNaN(date.getTime())) return '';
+
+        // Use UTC to keep the server date exactly
+        const yyyy = date.getUTCFullYear();
+        const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(date.getUTCDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
     },
 
     openModal: (modalId) => {
@@ -72,6 +95,8 @@ const Utils = {
         }
     },
 
+    // --- CASCADING FILTERS LOGIC ---
+    // config = { data: [], filters: [ {id, key}, {id, key} ], onFilter: (filteredData) => {} }
     // --- CASCADING FILTERS LOGIC ---
     // config = { data: [], filters: [ {id, key}, {id, key} ], onFilter: (filteredData) => {} }
     setupCascadingFilters: (config) => {
@@ -156,6 +181,40 @@ const Utils = {
 
         // Initial Run
         applyParams();
+    },
+
+    refreshCurrentView: () => {
+        const currentView = window.currentView || 'plan';
+        console.log("Refreshing view:", currentView);
+        if (currentView === 'plan' && window.PlanModule) PlanModule.loadData();
+        else if (currentView === 'gantt' && window.GanttModule) GanttModule.init();
+        else if (currentView === 'calendar' && window.CalendarModule) CalendarModule.init();
+        else if (currentView === 'hitos' && window.HitosModule) HitosModule.init();
+        else if (currentView === 'documents' && window.DocumentsModule) DocumentsModule.init();
+    },
+
+    previewFile: (url, title = 'Vista Previa') => {
+        let modal = document.getElementById('globalPreviewModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'globalPreviewModal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 90%; height: 90vh; display:flex; flex-direction:column;">
+                    <header class="modal-header">
+                        <h2 class="modal-title" id="globalPreviewTitle">Vista Previa</h2>
+                        <button class="close-btn" onclick="document.getElementById('globalPreviewModal').classList.remove('show')">&times;</button>
+                    </header>
+                    <div style="flex:1; background:#f1f5f9; display:flex; justify-content:center; align-items:center; overflow:hidden;">
+                         <iframe id="globalPreviewFrame" style="width:100%; height:100%; border:none; background:white;"></iframe>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        document.getElementById('globalPreviewTitle').textContent = title;
+        document.getElementById('globalPreviewFrame').src = url;
+        modal.classList.add('show');
     }
 };
 

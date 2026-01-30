@@ -40,6 +40,9 @@ const App = {
             target.style.display = 'block';
             console.log(`Navigating to ${viewName}`);
 
+            // Store current view globally for refresh logic
+            window.currentView = viewName;
+
             // Init Module
             switch (viewName) {
                 case 'plan': PlanModule.init(); break;
