@@ -66,15 +66,45 @@
                     </button>
                 </header>
 
-                <div class="filter-bar">
-                    <input type="text" id="searchPlan" class="filter-input" placeholder="Buscar actividad o código...">
-                    <select id="filterStatus" class="filter-input">
-                        <option value="">Todos los Estados</option>
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="En Progreso">En Progreso</option>
-                        <option value="Completado">Completado</option>
-                    </select>
+                <!-- Filter Card -->
+                <div class="filter-card">
+                    <div class="filter-group search-group">
+                        <label class="filter-label">Buscar Actividad</label>
+                        <input type="text" id="searchPlan" placeholder="Nombre, código..." class="form-input">
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Producto</label>
+                        <select id="filterProduct" class="form-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Responsable</label>
+                        <select id="filterResp" class="form-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Estado</label>
+                        <select id="filterStatus" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Progreso">En Progreso</option>
+                            <option value="Completado">Completado</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group action-group">
+                        <label class="filter-label">&nbsp;</label>
+                        <button class="clean-filters-btn" onclick="Utils.clearFilters()">
+                            <i class="fas fa-eraser"></i> Limpiar
+                        </button>
+                    </div>
                 </div>
+                <div id="activeFilters" class="mb-4 flex gap-2"></div>
 
                 <div class="data-table-container">
                     <table class="data-table">
@@ -100,11 +130,30 @@
             <section id="view-gantt" class="view-section" style="display:none;">
                 <header class="page-header">
                     <h1 class="page-title">Carta Gantt Global</h1>
-                    <div class="header-actions">
-                        <button class="btn btn-sm" onclick="renderGantt('month')">Mes</button>
-                        <button class="btn btn-sm" onclick="renderGantt('quarter')">Trimestre</button>
-                    </div>
                 </header>
+                <!-- Gantt does not have global filters usually in toolbar, but we have them in header actions. 
+                     User requested filters in all views. Let's move them below header into a Filter Card. -->
+
+                <div class="filter-card">
+                    <div class="filter-group">
+                        <label class="filter-label">Producto</label>
+                        <select id="ganttFilterProduct" class="form-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Responsable</label>
+                        <select id="ganttFilterResp" class="form-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group action-group">
+                        <label class="filter-label">&nbsp;</label>
+                        <button class="clean-filters-btn" onclick="GanttModule.clearFilters()">
+                            <i class="fas fa-eraser"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
                 <div class="gantt-container" id="ganttChart">
                     <!-- Gantt render area -->
                     <div class="text-center p-4">Cargando visualización...</div>
@@ -115,6 +164,16 @@
             <section id="view-calendar" class="view-section" style="display:none;">
                 <header class="page-header">
                     <h1 class="page-title">Calendario de Hitos</h1>
+                    <div class="flex gap-2">
+                        <button class="btn btn-sm btn-primary" id="btnCalMonth"
+                            onclick="CalendarModule.render('month')">
+                            <i class="far fa-calendar-alt"></i> Mensual
+                        </button>
+                        <button class="btn btn-sm btn-secondary" id="btnCalAgenda"
+                            onclick="CalendarModule.render('agenda')">
+                            <i class="fas fa-list-ul"></i> Agenda Diaria
+                        </button>
+                    </div>
                 </header>
                 <div class="calendar-container" id="calendarView">
                     <!-- Calendar render area -->
@@ -129,6 +188,31 @@
                         <i class="fas fa-plus"></i> Nuevo Hito
                     </button>
                 </header>
+
+                <!-- Filter Card Hitos -->
+                <div class="filter-card">
+                    <div class="filter-group">
+                        <label class="filter-label">Producto</label>
+                        <select id="hitoFilterProduct" class="form-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Estado</label>
+                        <select id="hitoFilterStatus" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="Completado">Completado</option>
+                        </select>
+                    </div>
+                    <div class="filter-group action-group">
+                        <label class="filter-label">&nbsp;</label>
+                        <button class="clean-filters-btn" onclick="Utils.clearFilters()">
+                            <i class="fas fa-eraser"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+
                 <div class="data-table-container">
                     <table class="data-table">
                         <thead>
@@ -152,6 +236,29 @@
                         <i class="fas fa-upload"></i> Subir Documento
                     </button>
                 </header>
+
+                <!-- Filter Card Docs -->
+                <div class="filter-card">
+                    <div class="filter-group">
+                        <label class="filter-label">Producto</label>
+                        <select id="docFilterProduct" class="form-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Subido Por</label>
+                        <select id="docFilterResp" class="form-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group action-group">
+                        <label class="filter-label">&nbsp;</label>
+                        <button class="clean-filters-btn" onclick="Utils.clearFilters()">
+                            <i class="fas fa-eraser"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+
                 <div class="data-table-container">
                     <table class="data-table">
                         <thead>
@@ -375,6 +482,7 @@
     <script src="js/modules/calendar.js"></script>
     <script src="js/modules/hitos.js"></script>
     <script src="js/modules/documents.js"></script>
+    <script src="js/utils.js"></script>
     <script src="js/app.js"></script>
 </body>
 

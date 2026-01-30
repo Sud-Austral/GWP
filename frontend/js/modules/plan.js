@@ -8,9 +8,40 @@ const PlanModule = {
     loadData: async () => {
         const data = await API.get('/plan-maestro');
         if (data) {
-            PlanModule.renderTable(data);
             window.appData = window.appData || {};
             window.appData.plan = data;
+
+            // Cascading Filters Setup
+            Utils.setupCascadingFilters({
+                data: data,
+                filters: [
+                    { id: 'filterProduct', key: 'product_code' },
+                    { id: 'filterResp', key: 'primary_responsible' },
+                    { id: 'filterStatus', key: 'estado' }
+                    // Note: Search Input logic is complex for 1:1 key. 
+                    // We leave it out of cascade for now or handle separately?
+                    // Let's keep Search separate listener to just filter the result of Cascade?
+                    // Or pass it as custom filter. 
+                    // For simplicity, let's keep Dropdowns cascading mainly.
+                ],
+                onFilter: (filtered) => {
+                    // Apply Search Text Filter manually on top
+                    const search = document.getElementById('searchPlan')?.value.toLowerCase();
+                    const final = !search ? filtered : filtered.filter(item =>
+                        (item.task_name || '').toLowerCase().includes(search) ||
+                        (item.activity_code || '').toLowerCase().includes(search)
+                    );
+                    PlanModule.renderTable(final);
+                }
+            });
+
+            // Dictionary Search Listener (non-cascading input triggers redraw)
+            document.getElementById('searchPlan')?.addEventListener('keyup', () => {
+                // Trigger change on one of the dropdowns to force re-eval? 
+                // Or just re-run render using current cascade state?
+                // The cascade "onFilter" runs when dropdowns change.
+                document.getElementById('filterProduct').dispatchEvent(new Event('change'));
+            });
         }
     },
 
@@ -66,37 +97,48 @@ const PlanModule = {
     },
 
     setupEvents: () => {
-        document.getElementById('btnNewActivity').addEventListener('click', () => {
-            PlanModule.openModal();
-        });
+        const btn = document.getElementById('btnNewActivity');
+        if (btn) btn.addEventListener('click', () => PlanModule.openModal());
 
-        document.getElementById('activityForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await PlanModule.save();
-        });
-
-        // Search Filter
-        document.getElementById('searchPlan').addEventListener('keyup', (e) => {
-            const term = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#planTableBody tr');
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                row.style.display = text.includes(term) ? '' : 'none';
+        const form = document.getElementById('planForm');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await PlanModule.save();
             });
-        });
+        }
+    },
 
-        // Status Filter
-        document.getElementById('filterStatus').addEventListener('change', (e) => {
-            const status = e.target.value;
-            const rows = document.querySelectorAll('#planTableBody tr');
-            rows.forEach(row => {
-                // Simplistic check, ideally re-render from data
-                if (!status) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = row.innerHTML.includes(status) ? '' : 'none';
-                }
-            });
+    applyFilters: () => {
+        const search = document.getElementById('searchPlan')?.value.toLowerCase();
+        const prod = document.getElementById('filterProduct')?.value.toLowerCase();
+        const resp = document.getElementById('filterResp')?.value.toLowerCase();
+        const status = document.getElementById('filterStatus')?.value;
+        const rows = document.querySelectorAll('#planTableBody tr');
+
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            // Need robust selecting. Assuming rendering structure remains.
+            // But relying on DOM text is fragile. Better Filter data array and re-render.
+            // However, to keep it simple and preserve existing DOM logic:
+
+            // Re-implementing correctly based on current DOM structure:
+            const rowCode = row.cells[0]?.innerText.toLowerCase() || '';
+            const rowName = row.cells[1]?.innerText.toLowerCase() || '';
+            const rowResp = row.cells[2]?.innerText.toLowerCase() || '';
+            const rowStatus = row.cells[3]?.innerText || '';
+
+            const matchesSearch = !search || rowCode.includes(search) || rowName.includes(search);
+            // Product filter: check code or meta text
+            const matchesProd = !prod || rowCode.includes(prod) || rowName.includes(prod);
+            const matchesResp = !resp || rowResp.includes(resp);
+            const matchesStatus = !status || rowStatus.includes(status);
+
+            if (matchesSearch && matchesProd && matchesResp && matchesStatus) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
         });
     },
 

@@ -60,24 +60,7 @@ const App = {
     }
 };
 
-// Utils Shared
-const Utils = {
-    checkAuth: () => {
-        if (!localStorage.getItem('token')) {
-            window.location.href = 'index.html';
-            return false;
-        }
-        return true;
-    },
-    getUser: () => JSON.parse(localStorage.getItem('user')),
-    formatDate: (str) => {
-        if (!str) return '-';
-        const d = new Date(str);
-        return isNaN(d) ? str : d.toLocaleDateString('es-CL');
-    },
-    openModal: (id) => document.getElementById(id).classList.add('show'),
-    closeModal: (id) => document.getElementById(id).classList.remove('show')
-};
+// Utils Shared already loaded from utils.js
 
 // API Wrapper
 const API = {

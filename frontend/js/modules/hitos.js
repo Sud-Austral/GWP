@@ -1,16 +1,30 @@
 
 const HitosModule = {
+    data: [], // Store raw data for filtering
+
     init: async () => {
         const data = await API.get('/hitos');
-        HitosModule.render(data);
+        HitosModule.data = data || [];
+
+        // Cascading Filters
+        Utils.setupCascadingFilters({
+            data: HitosModule.data,
+            filters: [
+                { id: 'hitoFilterProduct', key: 'product_code' },
+                { id: 'hitoFilterStatus', key: 'estado' }
+            ],
+            onFilter: (filtered) => {
+                HitosModule.render(filtered);
+            }
+        });
+
         HitosModule.setupEvents();
     },
 
     setupEvents: () => {
         const btn = document.getElementById('btnNewHitoGlobal');
         if (btn) {
-            // Remove previous event listeners to avoid dupes if init called multiple times
-            const newBtn = btn.cloneNode(true);
+            const newBtn = btn.cloneNode(true); // crude event clear
             btn.parentNode.replaceChild(newBtn, btn);
             newBtn.addEventListener('click', HitosModule.openModal);
         }
@@ -23,12 +37,25 @@ const HitosModule = {
         }
     },
 
+    applyFilters: () => {
+        const fProd = document.getElementById('hitoFilterProduct')?.value.toLowerCase();
+        const fStatus = document.getElementById('hitoFilterStatus')?.value;
+
+        const filtered = HitosModule.data.filter(h => {
+            const mProd = !fProd || (h.product_code || h.activity_code || '').toLowerCase().includes(fProd);
+            const mStatus = !fStatus || (h.estado === fStatus);
+            return mProd && mStatus;
+        });
+
+        HitosModule.render(filtered);
+    },
+
     render: (data) => {
         const tbody = document.getElementById('hitosTableBody');
         tbody.innerHTML = '';
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4">No hay hitos registrados.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4">No hay hitos registrados con los filtros actuales.</td></tr>';
             return;
         }
 
@@ -55,12 +82,9 @@ const HitosModule = {
     },
 
     openModal: async () => {
-        // Load plan activities
         const select = document.getElementById('hitoPlanSelect');
         select.innerHTML = '<option value="">Cargando...</option>';
 
-        // Fetch plans if not in window.appData (or fetch anyway to be fresh)
-        // Ideally we cache this or use a lightweight endpoint dropdown
         const plans = await API.get('/plan-maestro');
 
         select.innerHTML = '<option value="">Seleccione Actividad...</option>';
@@ -68,14 +92,12 @@ const HitosModule = {
             plans.forEach(p => {
                 const opt = document.createElement('option');
                 opt.value = p.id;
-                // Truncate name
                 const name = p.task_name.length > 50 ? p.task_name.substring(0, 50) + '...' : p.task_name;
                 opt.textContent = `${p.activity_code} - ${name}`;
                 select.appendChild(opt);
             });
         }
 
-        // Reset fields
         document.getElementById('hitoGlobalName').value = '';
         document.getElementById('hitoGlobalDate').value = '';
         document.getElementById('hitoGlobalDesc').value = '';
@@ -105,9 +127,8 @@ const HitosModule = {
         const res = await API.post('/hitos', payload);
         if (res && res.id) {
             Utils.closeModal('hitoGlobalModal');
-            // Reload list
-            const data = await API.get('/hitos');
-            HitosModule.render(data);
+            // Re-init to fetch fresh data
+            HitosModule.init();
         } else {
             alert("Error al crear hito");
         }

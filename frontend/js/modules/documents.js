@@ -1,9 +1,37 @@
 
 const DocumentsModule = {
+    data: [],
+
     init: async () => {
         const data = await API.get('/documentos');
-        DocumentsModule.render(data);
+        DocumentsModule.data = data || [];
+
+        // Cascading Filters
+        Utils.setupCascadingFilters({
+            data: DocumentsModule.data,
+            filters: [
+                { id: 'docFilterProduct', key: 'product_code' },
+                { id: 'docFilterResp', key: 'uploader' }
+            ],
+            onFilter: (filtered) => {
+                DocumentsModule.render(filtered);
+            }
+        });
+
         DocumentsModule.setupEvents();
+    },
+
+    applyFilters: () => {
+        const fProd = document.getElementById('docFilterProduct')?.value.toLowerCase();
+        const fResp = document.getElementById('docFilterResp')?.value.toLowerCase();
+
+        const filtered = DocumentsModule.data.filter(d => {
+            const mProd = !fProd || (d.product_code || d.activity_code || '').toLowerCase().includes(fProd);
+            const mResp = !fResp || (d.uploader || '').toLowerCase().includes(fResp);
+            return mProd && mResp;
+        });
+
+        DocumentsModule.render(filtered);
     },
 
     setupEvents: () => {
@@ -27,17 +55,12 @@ const DocumentsModule = {
         tbody.innerHTML = '';
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">No hay documentos subidos.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">No hay documentos con los filtros actuales.</td></tr>';
             return;
         }
 
         data.forEach(d => {
             const tr = document.createElement('tr');
-
-            // Build real URL
-            // Assuming API.BASE is like https://ip:port or http://ip:port
-            // We need to construct the download URL.
-            // d.ruta_archivo is just the filename now (e.g. "file.pdf")
             const fileUrl = `${API.BASE}/uploads/${d.ruta_archivo}`;
             const isPdf = d.nombre_archivo.toLowerCase().endsWith('.pdf');
 
@@ -71,7 +94,6 @@ const DocumentsModule = {
     },
 
     openModal: async () => {
-        // Load plan activities
         const select = document.getElementById('docPlanSelect');
         select.innerHTML = '<option value="">Cargando...</option>';
 
@@ -118,8 +140,7 @@ const DocumentsModule = {
 
             if (res.ok) {
                 Utils.closeModal('docGlobalModal');
-                const data = await API.get('/documentos');
-                DocumentsModule.render(data);
+                DocumentsModule.init(); // Reload
             } else {
                 alert("Error: " + json.error);
             }
@@ -129,7 +150,6 @@ const DocumentsModule = {
     },
 
     preview: (url) => {
-        // Simple modal implementation for preview
         let modal = document.getElementById('previewModal');
         if (!modal) {
             modal = document.createElement('div');
@@ -148,7 +168,6 @@ const DocumentsModule = {
             `;
             document.body.appendChild(modal);
         }
-
         document.getElementById('previewFrame').src = url;
         modal.classList.add('show');
     }
