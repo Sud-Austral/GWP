@@ -13,6 +13,7 @@ Gestiona el acceso y la trazabilidad de las operaciones.
 - **Roles**: Admin, Coordinador, Finanzas, Legal, etc.
 - **Propósito**: Auditoría de creación y actualización de registros.
 
+
 ### 2. Plan Maestro (`plan_maestro`)
 Tabla central que consolida toda la información operativa del proyecto.
 - **Diseño**: Desnormalizado. Contiene todos los campos funcionales (Actividades, Fechas, Responsables) en una sola estructura plana.
