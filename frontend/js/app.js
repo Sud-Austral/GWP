@@ -8,7 +8,7 @@ const App = {
         App.loadUserProfile();
 
         // Initial View
-        App.navigate('plan');
+        App.navigate('dashboard');
     },
 
     setupNavigation: () => {
@@ -45,12 +45,15 @@ const App = {
 
             // Init Module
             switch (viewName) {
+                case 'dashboard': StatsModule.init(); break;
                 case 'plan': PlanModule.init(); break;
                 case 'users': UsersModule.init(); break;
                 case 'gantt': GanttModule.init(); break;
                 case 'calendar': CalendarModule.init(); break;
                 case 'hitos': HitosModule.init(); break;
+                case 'observaciones': ObservacionesModule.init(); break;
                 case 'documents': DocumentsModule.init(); break;
+                case 'repo': RepoModule.init(); break;
             }
         }
     },

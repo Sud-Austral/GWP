@@ -12,6 +12,8 @@ from flask import Flask, request, jsonify, g, send_from_directory
 from flask_cors import CORS
 from functools import wraps
 from werkzeug.utils import secure_filename
+import datetime
+from flask.json.provider import DefaultJSONProvider
 
 # -----------------------
 # CONFIGURACIÓN
@@ -23,6 +25,16 @@ DB_CONNECTION_STRING = os.getenv(
 )
 
 app = Flask(__name__)
+
+# PATCH: Date Serialization Fix
+class CustomJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, (datetime.date, datetime.datetime)):
+            return obj.isoformat()
+        return super().default(obj)
+
+app.json = CustomJSONProvider(app)
+
 # Configurar Uploads
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 if not os.path.exists(UPLOAD_FOLDER):
@@ -441,7 +453,7 @@ def get_all_docs(current_user_id):
         conn = get_db_connection()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT d.*, p.activity_code, p.task_name, u.username as uploader
+                SELECT d.*, p.activity_code, p.task_name, u.nombre as uploader
                 FROM documentos d
                 JOIN plan_maestro p ON d.plan_maestro_id = p.id
                 LEFT JOIN usuarios u ON d.uploaded_by = u.id
@@ -464,7 +476,7 @@ def get_plan_docs(current_user_id, plan_id):
             # Simple query debugged
             cur.execute("""
                 SELECT d.id, d.nombre_archivo, d.ruta_archivo, d.created_at, d.uploaded_by,
-                       u.username as uploader
+                       u.nombre as uploader
                 FROM documentos d
                 LEFT JOIN usuarios u ON d.uploaded_by = u.id
                 WHERE d.plan_maestro_id = %s
@@ -565,11 +577,274 @@ def delete_document(current_user_id, doc_id):
         if conn: release_db_connection(conn)
 
 
+# -----------------------
+# OBSERVACIONES (BITÁCORA)
+# -----------------------
+@app.route("/plan-maestro/<int:plan_id>/observaciones", methods=["GET"])
+@session_required
+def get_observaciones(current_user_id, plan_id):
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT o.id, o.texto, o.created_at, 
+                       u.nombre as usuario_nombre, u.username as usuario_username
+                FROM observaciones o
+                LEFT JOIN usuarios u ON o.usuario_id = u.id
+                WHERE o.plan_maestro_id = %s
+                ORDER BY o.created_at DESC
+            """, (plan_id,))
+            rows = cur.fetchall()
+        return jsonify(rows)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: release_db_connection(conn)
+
+@app.route("/plan-maestro/<int:plan_id>/observaciones", methods=["POST"])
+@session_required
+def add_observacion(current_user_id, plan_id):
+    conn = None
+    try:
+        data = request.json
+        texto = data.get("texto")
+        if not texto:
+            return jsonify({"error": "Texto requerido"}), 400
+
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO observaciones (plan_maestro_id, usuario_id, texto)
+                VALUES (%s, %s, %s)
+                RETURNING id
+            """, (plan_id, current_user_id, texto))
+            new_id = cur.fetchone()[0]
+            conn.commit()
+        return jsonify({"id": new_id, "message": "Observación agregada"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: release_db_connection(conn)
+
+
+
+@app.route("/observaciones", methods=["GET"])
+@session_required
+def get_all_observaciones(current_user_id):
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT o.id, o.texto, o.created_at, 
+                       u.nombre as usuario_nombre,
+                       p.activity_code, p.task_name, p.id as plan_id
+                FROM observaciones o
+                LEFT JOIN usuarios u ON o.usuario_id = u.id
+                JOIN plan_maestro p ON o.plan_maestro_id = p.id
+                ORDER BY o.created_at DESC
+            """)
+            rows = cur.fetchall()
+        return jsonify(rows)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: release_db_connection(conn)
+
+@app.route("/observaciones/<int:obs_id>", methods=["PUT", "DELETE"])
+@session_required
+def manage_observacion(current_user_id, obs_id):
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            # Check ownership or admin
+            cur.execute("SELECT usuario_id FROM observaciones WHERE id = %s", (obs_id,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"error": "Observación no encontrada"}), 404
+            
+            # Allow admin (id=1 usually) or owner
+            # Assuming current_user_id is available
+            if row[0] != current_user_id and current_user_id != 1: # Basic admin check
+                 return jsonify({"error": "No tienes permiso"}), 403
+
+            if request.method == "DELETE":
+                cur.execute("DELETE FROM observaciones WHERE id = %s", (obs_id,))
+                conn.commit()
+                return jsonify({"message": "Eliminado"})
+            
+            elif request.method == "PUT":
+                data = request.json
+                texto = data.get('texto')
+                if not texto: return jsonify({"error": "Texto vacío"}), 400
+                
+                cur.execute("UPDATE observaciones SET texto = %s, updated_at = NOW() WHERE id = %s", (texto, obs_id))
+                conn.commit()
+                return jsonify({"message": "Actualizado"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: release_db_connection(conn)
+
+
+# -----------------------
+# REPOSITORIO ESTRATÉGICO
+# -----------------------
+@app.route("/repositorio", methods=["GET"])
+@session_required
+def get_repositorio(current_user_id):
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT r.*, u.nombre as uploader_name
+                FROM repositorio_documentos r
+                LEFT JOIN usuarios u ON r.uploaded_by = u.id
+                ORDER BY r.created_at DESC
+            """)
+            rows = cur.fetchall()
+        return jsonify(rows)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: release_db_connection(conn)
+
+@app.route("/repositorio", methods=["POST"])
+@session_required
+def add_repositorio(current_user_id):
+    conn = None
+    try:
+        # Check files
+        file = request.files.get('file')
+        
+        # Metadata from form (multipart)
+        titulo = request.form.get('titulo')
+        tipo_doc = request.form.get('tipo_documento')
+        desc = request.form.get('descripcion')
+        fuente = request.form.get('fuente_origen')
+        tipo_fuente = request.form.get('tipo_fuente')
+        fecha_pub = request.form.get('fecha_publicacion') or None
+        enlace = request.form.get('enlace_externo')
+        tags = request.form.get('etiquetas')
+        puntos = request.form.get('puntos_clave') # Optional JSON text
+
+        if not titulo:
+             return jsonify({"error": "Título es obligatorio"}), 400
+
+        # Handle File Upload
+        ruta_archivo = None
+        if file and file.filename:
+            original_filename = secure_filename(file.filename)
+            unique_name = f"REPO_{int(time.time())}_{original_filename}"
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
+            ruta_archivo = unique_name
+        
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO repositorio_documentos (
+                    titulo, tipo_documento, descripcion, puntos_clave,
+                    ruta_archivo, fecha_publicacion, fuente_origen, tipo_fuente,
+                    enlace_externo, etiquetas, uploaded_by
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (titulo, tipo_doc, desc, puntos, ruta_archivo, fecha_pub, fuente, tipo_fuente, enlace, tags, current_user_id))
+            
+            new_id = cur.fetchone()[0]
+            conn.commit()
+            
+        return jsonify({"message": "Documento agregado al repositorio", "id": new_id}), 201
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: release_db_connection(conn)
+
+@app.route("/repositorio/<int:id_doc>", methods=["DELETE"])
+@session_required
+def delete_repositorio(current_user_id, id_doc):
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            # Get file path to delete
+            cur.execute("SELECT ruta_archivo FROM repositorio_documentos WHERE id = %s", (id_doc,))
+            row = cur.fetchone()
+            if row and row[0]:
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], row[0])
+                if os.path.exists(file_path):
+                    try: os.remove(file_path)
+                    except: pass
+            
+            cur.execute("DELETE FROM repositorio_documentos WHERE id = %s", (id_doc,))
+            conn.commit()
+        return jsonify({"message": "Documento eliminado"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: release_db_connection(conn)
+
+
 @app.route('/uploads/<path:filename>')
 def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+
+# -----------------------
+# AUTO-MIGRATION HELPER
+# -----------------------
+def check_and_create_tables():
+    print("Verificando tablas del sistema...")
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            # Tabla: repositorio_documentos
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS repositorio_documentos (
+                    id SERIAL PRIMARY KEY,
+                    titulo VARCHAR(255) NOT NULL,
+                    tipo_documento VARCHAR(100),
+                    descripcion TEXT,
+                    puntos_clave TEXT,
+                    ruta_archivo VARCHAR(500),
+                    fecha_publicacion DATE,
+                    fuente_origen VARCHAR(100),
+                    tipo_fuente VARCHAR(50),
+                    enlace_externo VARCHAR(500),
+                    estado_procesamiento VARCHAR(50) DEFAULT 'Pendiente',
+                    etiquetas VARCHAR(255),
+                    uploaded_by INTEGER REFERENCES usuarios(id),
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            
+            # Tabla: observaciones (por si acaso falla también)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS observaciones (
+                    id SERIAL PRIMARY KEY,
+                    plan_maestro_id INTEGER NOT NULL REFERENCES plan_maestro(id) ON DELETE CASCADE,
+                    usuario_id INTEGER REFERENCES usuarios(id),
+                    texto TEXT NOT NULL,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            conn.commit()
+            print("Tablas verificadas correctamente.")
+    except Exception as e:
+        print("Error en migración automática:", e)
+    finally:
+        if conn: release_db_connection(conn)
+
 if __name__ == '__main__':
+    check_and_create_tables() # Run migration check on startup
     cert_path = os.path.abspath("fullchain.pem")
     key_path = os.path.abspath("private.key")
     print("Iniciando servidor en https://0.0.0.0:8002")

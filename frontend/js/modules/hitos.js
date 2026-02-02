@@ -41,12 +41,6 @@ const HitosModule = {
         const tbody = document.getElementById('hitosTableBody');
         tbody.innerHTML = '';
 
-        // Ensure table container
-        const table = document.getElementById('hitosTableBody').parentNode;
-        if (table && !table.parentElement.classList.contains('table-container')) {
-            table.parentElement.classList.add('table-container');
-        }
-
         if (!data || data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-slate-400 italic">No hay hitos registrados con los filtros actuales.</td></tr>';
             return;

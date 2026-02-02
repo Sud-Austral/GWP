@@ -111,12 +111,6 @@ const PlanModule = {
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        // Ensure table container style (hacky via JS if we can't touch HTML structure easily)
-        const table = document.getElementById('planTable');
-        if (table && !table.parentElement.classList.contains('table-container')) {
-            table.parentElement.classList.add('table-container');
-        }
-
         if (!data || data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-slate-400 italic">No hay actividades registradas.</td></tr>';
             return;
@@ -279,13 +273,58 @@ const PlanModule = {
                 if (item.has_file_uploaded) {
                     document.getElementById('fileStatus').innerHTML = '<i class="fas fa-check text-green-500"></i> Archivo cargado previamente';
                 }
-
-                // Load hitos
-                await PlanModule.loadHitos(item.id);
             }
         }
 
         Utils.openModal('activityModal');
+    },
+
+    init: async () => {
+        console.log("PlanModule Init");
+        // Load data
+        await PlanModule.loadData();
+
+        // Events
+        PlanModule.setupEvents();
+
+        // Utils
+        Utils.initCascadingDropdowns();
+        Utils.initTabs();
+    },
+
+    loadModalObs: async (id) => {
+        const container = document.getElementById('modalObsList');
+        if (!container) return;
+        container.innerHTML = '<div class="text-center text-slate-400 text-xs">Cargando...</div>';
+        try {
+            const obs = await API.get(`/plan-maestro/${id}/observaciones`);
+            if (obs && obs.length > 0) {
+                container.innerHTML = obs.map(o => `
+                    <div class="mb-2 pb-2 border-b border-slate-100 last:border-0 last:mb-0 last:pb-0">
+                        <div class="flex justify-between items-baseline mb-1">
+                             <span class="font-bold text-slate-700 text-xs">${o.usuario_nombre || o.usuario_username || 'User'}</span>
+                             <span class="text-[10px] text-slate-400">${Utils.formatDate(o.created_at)}</span>
+                        </div>
+                        <div class="text-slate-600 text-xs leading-snug">${o.texto}</div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="text-center text-slate-400 text-xs py-2">Sin observaciones</div>';
+            }
+        } catch (e) { container.innerHTML = 'Error'; }
+    },
+
+    addObsFromModal: async () => {
+        const id = document.getElementById('actId').value;
+        const txtInput = document.getElementById('modalNewObs');
+        const txt = txtInput.value;
+        if (!id || !txt.trim()) return;
+
+        try {
+            await API.post(`/plan-maestro/${id}/observaciones`, { texto: txt });
+            txtInput.value = '';
+            PlanModule.loadModalObs(id);
+        } catch (e) { alert("Error agregando observación"); }
     },
 
     edit: (id) => {
@@ -442,9 +481,11 @@ const PlanModule = {
     },
 
     viewDetails: async (id) => {
-        const item = window.appData?.plan?.find(p => p.id === id);
+        if (!window.appData.plan) return;
+        const item = window.appData.plan.find(i => i.id === id);
         if (!item) return;
 
+        // Populate Info General
         // --- PALETA DE COLORES TIPO DASHBOARD ---
         const Colors = {
             primary: 'linear-gradient(135deg, #4361EE 0%, #3F37C9 100%)', // Blue to Purple
@@ -661,5 +702,66 @@ const PlanModule = {
                  `;
             }
         } catch (e) { dDiv.innerHTML = 'Error docs'; }
+
+        // 4. OBSERVACIONES (Bitácora)
+        const oDiv = document.getElementById('detailObsList');
+        if (oDiv) {
+            oDiv.className = "";
+            oDiv.style.cssText = "display:flex; flex-direction:column; gap:16px; padding:0 8px;";
+
+            // Render Form
+            const formHtml = `
+                <div style="background:#f8fafc; padding:12px; border-radius:12px; border:1px solid #e2e8f0; display:flex; gap:10px; align-items:start;">
+                    <div style="width:32px; height:32px; border-radius:50%; background:#3b82f6; color:white; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <i class="fas fa-user" style="font-size:0.8rem;"></i>
+                    </div>
+                    <div style="flex:1;">
+                        <textarea id="obsText" placeholder="Escribe una observación..." style="width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:8px; font-size:0.9rem; min-height:60px; resize:vertical; margin-bottom:8px;"></textarea>
+                        <div style="text-align:right;">
+                            <button onclick="PlanModule.addObservacion(${id})" style="background:#3b82f6; color:white; border:none; padding:6px 16px; border-radius:6px; font-weight:600; cursor:pointer; font-size:0.85rem;">Comentar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            oDiv.innerHTML = formHtml + '<div id="obsItemsList" style="display:flex; flex-direction:column; gap:12px; margin-top:8px;"><div style="text-align:center; color:#cbd5e1;">Cargando historial...</div></div>';
+
+            // Load Items
+            try {
+                const obs = await API.get(`/plan-maestro/${id}/observaciones`);
+                const itemsList = document.getElementById('obsItemsList');
+                if (obs && obs.length > 0) {
+                    itemsList.innerHTML = obs.map(o => `
+                        <div style="display:flex; gap:12px;">
+                            <div style="width:32px; height:32px; border-radius:50%; background:#f1f5f9; color:#64748b; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-weight:700; font-size:0.75rem;">
+                                ${o.usuario_nombre ? o.usuario_nombre.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                            <div style="background:white; padding:10px 14px; border-radius: 0 12px 12px 12px; border:1px solid #f1f5f9; box-shadow:0 2px 4px rgba(0,0,0,0.02); flex:1;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                                    <div style="font-weight:700; color:#334155; font-size:0.85rem;">${o.usuario_nombre || o.usuario_username || 'Usuario'}</div>
+                                    <div style="font-size:0.7rem; color:#94a3b8;">${Utils.formatDate(o.created_at)}</div>
+                                </div>
+                                <div style="color:#475569; font-size:0.9rem; white-space:pre-wrap; line-height:1.4;">${o.texto}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    itemsList.innerHTML = '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.85rem; font-style:italic;">No hay observaciones aún.</div>';
+                }
+            } catch (e) { console.error(e); }
+        }
+    },
+
+    addObservacion: async (planId) => {
+        const txt = document.getElementById('obsText').value;
+        if (!txt.trim()) return;
+
+        try {
+            await API.post(`/plan-maestro/${planId}/observaciones`, { texto: txt });
+            // Reload view to see new comment
+            PlanModule.viewDetails(planId);
+        } catch (e) {
+            alert("Error al agregar observación");
+        }
     }
 };

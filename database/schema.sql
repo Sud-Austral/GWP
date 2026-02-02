@@ -77,6 +77,37 @@ CREATE TABLE documentos (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 5. Tabla de Observaciones (Bitácora)
+CREATE TABLE observaciones (
+    id SERIAL PRIMARY KEY,
+    plan_maestro_id INTEGER NOT NULL REFERENCES plan_maestro(id) ON DELETE CASCADE,
+    usuario_id INTEGER REFERENCES usuarios(id),
+    texto TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. Tabla de Repositorio de Documentos Estratégicos (Biblioteca)
+CREATE TABLE repositorio_documentos (
+    id SERIAL PRIMARY KEY, -- id_documento
+    titulo VARCHAR(255) NOT NULL,
+    tipo_documento VARCHAR(100), -- Ley, Decreto, Informe Técnico, etc.
+    descripcion TEXT, -- Resumen ejecutivo
+    puntos_clave TEXT, -- JSON o Texto plano con bullets
+    ruta_archivo VARCHAR(500), -- Path local uploads
+    fecha_publicacion DATE, -- anno_publicacion
+    fuente_origen VARCHAR(100), -- CONAF, MMA, etc.
+    tipo_fuente VARCHAR(50), -- Gobierno, Privado, ONG, etc.
+    enlace_externo VARCHAR(500), -- URL Web
+    estado_procesamiento VARCHAR(50) DEFAULT 'Pendiente', -- Pendiente, Resumido, Indexado
+    etiquetas VARCHAR(255), -- Tags separados por coma
+    
+    uploaded_by INTEGER REFERENCES usuarios(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Funciones de ayuda
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

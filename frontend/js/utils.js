@@ -184,13 +184,16 @@ const Utils = {
     },
 
     refreshCurrentView: () => {
-        const currentView = window.currentView || 'plan';
+        const currentView = document.querySelector('.nav-item.active').dataset.view;
         console.log("Refreshing view:", currentView);
-        if (currentView === 'plan' && window.PlanModule) PlanModule.loadData();
-        else if (currentView === 'gantt' && window.GanttModule) GanttModule.init();
+        if (currentView === 'dashboard' && window.StatsModule) StatsModule.init();
+        else if (currentView === 'plan' && window.PlanModule) PlanModule.init();
+        else if (currentView === 'users' && window.UsersModule) UsersModule.init();
         else if (currentView === 'calendar' && window.CalendarModule) CalendarModule.init();
         else if (currentView === 'hitos' && window.HitosModule) HitosModule.init();
+        else if (currentView === 'observaciones' && window.ObservacionesModule) ObservacionesModule.init();
         else if (currentView === 'documents' && window.DocumentsModule) DocumentsModule.init();
+        else if (currentView === 'repo' && window.RepoModule) RepoModule.loadData();
     },
 
     previewFile: (url, title = 'Vista Previa') => {
@@ -200,21 +203,56 @@ const Utils = {
             modal.id = 'globalPreviewModal';
             modal.className = 'modal';
             modal.innerHTML = `
-                <div class="modal-content" style="max-width: 90%; height: 90vh; display:flex; flex-direction:column;">
+                <div class="modal-content" style="width:90%; height:90%; max-width:1200px; display:flex; flex-direction:column;">
                     <header class="modal-header">
-                        <h2 class="modal-title" id="globalPreviewTitle">Vista Previa</h2>
-                        <button class="close-btn" onclick="document.getElementById('globalPreviewModal').classList.remove('show')">&times;</button>
+                        <h2 class="modal-title" id="previewTitle">Vista Previa</h2>
+                        <button class="close-btn" onclick="document.getElementById('globalPreviewModal').style.display='none'">&times;</button>
                     </header>
-                    <div style="flex:1; background:#f1f5f9; display:flex; justify-content:center; align-items:center; overflow:hidden;">
-                         <iframe id="globalPreviewFrame" style="width:100%; height:100%; border:none; background:white;"></iframe>
+                    <div style="flex:1; background:#f1f5f9; padding:10px; border-radius:4px; display:flex; justify-content:center; align-items:center;">
+                         <iframe id="previewFrame" style="width:100%; height:100%; border:none; background:white;"></iframe>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
         }
-        document.getElementById('globalPreviewTitle').textContent = title;
-        document.getElementById('globalPreviewFrame').src = url;
-        modal.classList.add('show');
+        document.getElementById('previewTitle').textContent = title;
+        document.getElementById('previewFrame').src = url;
+        modal.style.display = 'flex';
+    },
+
+    initTabs: () => {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            // Avoid double binding
+            if (btn.dataset.bound) return;
+            btn.dataset.bound = true;
+
+            btn.addEventListener('click', () => {
+                const target = btn.dataset.target;
+
+                // Toggle Buttons
+                const parent = btn.parentElement;
+                parent.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active'); // CSS class control
+                    // Inline styles reset
+                    b.style.color = '#64748b';
+                    b.style.borderBottom = '2px solid transparent';
+                });
+
+                // Active state
+                btn.classList.add('active');
+                btn.style.color = '#3b82f6';
+                btn.style.borderBottom = '2px solid #3b82f6';
+
+                // Toggle Content
+                // Find common ancestor for panes? Usually modal-content
+                const modalContent = btn.closest('.modal-content');
+                if (modalContent) {
+                    modalContent.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+                    const pane = modalContent.querySelector('#' + target);
+                    if (pane) pane.classList.remove('hidden');
+                }
+            });
+        });
     }
 };
 
