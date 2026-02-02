@@ -765,26 +765,70 @@ def add_repositorio(current_user_id):
     finally:
         if conn: release_db_connection(conn)
 
-@app.route("/repositorio/<int:id_doc>", methods=["DELETE"])
+@app.route("/repositorio/<int:id_doc>", methods=["PUT", "DELETE"])
 @session_required
-def delete_repositorio(current_user_id, id_doc):
+def manage_repositorio(current_user_id, id_doc):
     conn = None
     try:
         conn = get_db_connection()
-        with conn.cursor() as cur:
-            # Get file path to delete
-            cur.execute("SELECT ruta_archivo FROM repositorio_documentos WHERE id = %s", (id_doc,))
-            row = cur.fetchone()
-            if row and row[0]:
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], row[0])
-                if os.path.exists(file_path):
-                    try: os.remove(file_path)
-                    except: pass
+        
+        if request.method == "DELETE":
+            with conn.cursor() as cur:
+                # Get file path to delete
+                cur.execute("SELECT ruta_archivo FROM repositorio_documentos WHERE id = %s", (id_doc,))
+                row = cur.fetchone()
+                if row and row[0]:
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], row[0])
+                    if os.path.exists(file_path):
+                        try: os.remove(file_path)
+                        except: pass
+                
+                cur.execute("DELETE FROM repositorio_documentos WHERE id = %s", (id_doc,))
+                conn.commit()
+            return jsonify({"message": "Documento eliminado"})
             
-            cur.execute("DELETE FROM repositorio_documentos WHERE id = %s", (id_doc,))
-            conn.commit()
-        return jsonify({"message": "Documento eliminado"})
+        elif request.method == "PUT":
+            data = request.json
+            if not data:
+                return jsonify({"error": "No JSON data"}), 400
+                
+            fields = []
+            values = []
+            
+            updatable = {
+                'titulo': 'titulo',
+                'tipo_documento': 'tipo_documento',
+                'descripcion': 'descripcion',
+                'fuente_origen': 'fuente_origen',
+                'tipo_fuente': 'tipo_fuente',
+                'fecha_publicacion': 'fecha_publicacion',
+                'enlace_externo': 'enlace_externo',
+                'etiquetas': 'etiquetas'
+            }
+            
+            for key, col in updatable.items():
+                # Handle possible empty strings as NULL or valid empty strings
+                if key in data:
+                    val = data[key]
+                    if key == 'fecha_publicacion' and not val:
+                        val = None
+                    fields.append(f"{col} = %s")
+                    values.append(val)
+            
+            if not fields:
+                 return jsonify({"message": "Nada que actualizar"}), 200
+            
+            values.append(id_doc)
+            
+            with conn.cursor() as cur:
+                query = f"UPDATE repositorio_documentos SET {', '.join(fields)} WHERE id = %s"
+                cur.execute(query, tuple(values))
+                conn.commit()
+            
+            return jsonify({"message": "Documento actualizado"})
+
     except Exception as e:
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)

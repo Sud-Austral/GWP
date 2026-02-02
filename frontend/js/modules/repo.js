@@ -109,8 +109,9 @@ const RepoModule = {
                             </div>
                         </div>
                          <!-- Options -->
-                        <div class="relative group">
-                            <button onclick="RepoModule.delete(${item.id})" class="text-slate-300 hover:text-red-500 transition-colors"><i class="fas fa-times"></i></button>
+                        <div class="flex gap-2">
+                            <button onclick="RepoModule.edit(${item.id})" class="text-slate-300 hover:text-blue-500 transition-colors" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                            <button onclick="RepoModule.delete(${item.id})" class="text-slate-300 hover:text-red-500 transition-colors" title="Eliminar"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
 
@@ -137,8 +138,44 @@ const RepoModule = {
         `;
     },
 
+    edit: (id) => {
+        const item = RepoModule.data.find(d => d.id === id);
+        if (!item) return;
+
+        const form = document.getElementById('repoForm');
+        form.reset();
+
+        let idInput = document.getElementById('repoId');
+        if (!idInput) {
+            idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.id = 'repoId';
+            form.appendChild(idInput);
+        }
+        idInput.value = item.id;
+
+        Array.from(form.elements).forEach(el => {
+            if (el.name && item[el.name] !== undefined && item[el.name] !== null) {
+                el.value = item[el.name];
+            }
+        });
+
+        const titleParams = document.querySelector('#repoModal .modal-title');
+        if (titleParams) titleParams.textContent = 'Editar Documento';
+
+        Utils.openModal('repoModal');
+    },
+
     setupEvents: () => {
         document.getElementById('btnNewRepoDoc')?.addEventListener('click', () => {
+            const form = document.getElementById('repoForm');
+            form.reset();
+            const idInput = document.getElementById('repoId');
+            if (idInput) idInput.value = '';
+
+            const titleParams = document.querySelector('#repoModal .modal-title');
+            if (titleParams) titleParams.textContent = 'Agregar a Biblioteca';
+
             Utils.openModal('repoModal');
         });
 
@@ -158,9 +195,39 @@ const RepoModule = {
 
     save: async () => {
         const form = document.getElementById('repoForm');
-        const formData = new FormData(form);
+        const idInput = document.getElementById('repoId');
+        const id = (idInput && idInput.value) ? idInput.value : null;
 
-        // Format date if empty
+        if (id) {
+            // PUT
+            const payload = {};
+            Array.from(form.elements).forEach(el => {
+                if (el.name && el.name !== 'file' && el.value) payload[el.name] = el.value;
+            });
+
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API.BASE}/repositorio/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (res.ok) {
+                    Utils.closeModal('repoModal');
+                    form.reset();
+                    idInput.value = '';
+                    RepoModule.loadData();
+                    alert("Documento actualizado exitosamente");
+                } else {
+                    alert("Error: " + (json.error || 'Error desconocido'));
+                }
+            } catch (e) { alert("Error de conexión"); }
+            return;
+        }
+
+        // POST (New)
+        const formData = new FormData(form);
         if (!formData.get('fecha_publicacion')) formData.delete('fecha_publicacion');
 
         try {
