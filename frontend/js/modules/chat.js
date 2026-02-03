@@ -165,12 +165,15 @@ Responde las consultas del usuario basándote en esta información.
 Si la pregunta no está relacionada con los documentos, indica que no tienes esa información.
 Responde en español de forma concisa y profesional.
 
-IMPORTANTE: 
-Al final de tu respuesta, sugieres siempre 3 preguntas de seguimiento breves que el usuario podría hacer a continuación.
-Debes incluirlas al final de tu respuesta en un formato especial:
-[SUGERENCIA: Pregunta 1]
-[SUGERENCIA: Pregunta 2]
-[SUGERENCIA: Pregunta 3]`;
+IMPORTANTE SOBRE PREGUNTAS DE SEGUIMIENTO:
+Al final de tu respuesta, DEBES sugerir 3 preguntas breves que el usuario podría hacer a continuación.
+Usa EXACTAMENTE este formato, una por línea, asegurándote de cerrar los corchetes:
+
+[SUGERENCIA: ¿Pregunta 1?]
+[SUGERENCIA: ¿Pregunta 2?]
+[SUGERENCIA: ¿Pregunta 3?]
+
+No añadas texto antes ni después de estas sugerencias. Solo las etiquetas.`;
 
         const response = await fetch(API_URL, {
             method: 'POST',
@@ -205,18 +208,28 @@ Debes incluirlas al final de tu respuesta en un formato especial:
 
     // Format AI response with markdown-like styling & suggestion buttons
     formatResponse: (text) => {
-        // Extract suggestions
-        const suggestionRegex = /\[SUGERENCIA: (.*?)\]/g;
+        // Extract suggestions. Regex handles:
+        // - Optional spaces after colon
+        // - Capture text until closing bracket OR end of line (if bracket missing)
+        // - Non-greedy match
+        const suggestionRegex = /\[SUGERENCIA:\s*(.+?)(?:\]|\n|$)/g;
+
         let suggestionsHTML = '<div class="mt-3 flex flex-col gap-2">';
         let hasSuggestions = false;
 
+        // First pass: remove suggestions from text and build HTML list
         const cleanText = text.replace(suggestionRegex, (match, question) => {
-            hasSuggestions = true;
-            suggestionsHTML += `
-                <button onclick="ChatModule.sendChat('${question.replace(/'/g, "\\'")}')" 
-                    class="text-left text-xs bg-indigo-50 border border-indigo-100 text-indigo-600 px-3 py-2 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-2">
-                    <i class="fas fa-reply text-[10px]"></i> ${question}
-                </button>`;
+            // Clean up question text just in case
+            const q = question.trim();
+            if (q.length > 2) {
+                hasSuggestions = true;
+                suggestionsHTML += `
+                    <button onclick="ChatModule.sendChat('${q.replace(/'/g, "\\'")}')" 
+                        class="text-left text-xs bg-indigo-50 border border-indigo-100 text-indigo-600 px-3 py-2 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-2 w-full">
+                        <i class="fas fa-reply text-[10px] flex-shrink-0"></i> 
+                        <span class="truncate-2-lines">${q}</span>
+                    </button>`;
+            }
             return ''; // Remove from main text
         }).trim();
 
