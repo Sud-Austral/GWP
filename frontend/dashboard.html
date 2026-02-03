@@ -482,19 +482,28 @@
                 <!-- #26 Gantt Minimap -->
                 <div id="ganttMinimapContainer" class="mt-4"></div>
 
-                <!-- #25 Milestones Legend -->
-                <div class="mt-4 flex items-center gap-6 text-xs text-slate-500">
+                <!-- #25 Gantt Legend -->
+                <div
+                    class="bg-slate-50 px-6 py-3 rounded-xl border border-slate-100 mt-4 flex items-center justify-center gap-10">
                     <div class="flex items-center gap-2">
-                        <span class="w-4 h-4 rounded bg-green-500"></span> Completado
+                        <span class="inline-block w-5 h-3 rounded-sm bg-emerald-500"></span>
+                        <span class="text-sm text-slate-600">Completado</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="w-4 h-4 rounded bg-blue-500"></span> En Progreso
+                        <span class="inline-block w-5 h-3 rounded-sm bg-blue-500"></span>
+                        <span class="text-sm text-slate-600">En Progreso</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="w-4 h-4 rounded bg-red-500"></span> Pendiente
+                        <span class="inline-block w-5 h-3 rounded-sm bg-red-500"></span>
+                        <span class="text-sm text-slate-600">Pendiente / Atrasado</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 bg-amber-500 rotate-45"></span> Hito
+                        <span class="inline-block w-5 h-3 rounded-sm bg-slate-300"></span>
+                        <span class="text-sm text-slate-600">Planificado</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-diamond text-amber-500 text-xs"></i>
+                        <span class="text-sm text-slate-600">Hito</span>
                     </div>
                 </div>
             </section>

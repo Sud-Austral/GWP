@@ -114,21 +114,74 @@ const GanttModule = {
 
         const minDate = GanttModule.state.minDate;
         const maxDate = GanttModule.state.maxDate;
+        const zoom = GanttModule.state.zoom || 'month';
 
-        // Generate Months Headers dynamically
-        const months = [];
+        // Generate time periods based on zoom level
+        const periods = [];
         let curr = new Date(minDate);
-        while (curr <= maxDate) {
-            months.push({
-                label: curr.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' }),
-                date: new Date(curr),
-                key: `${curr.getFullYear()}-${curr.getMonth()}`
-            });
-            curr.setMonth(curr.getMonth() + 1);
+        let colWidth = 100; // default width per column
+
+        switch (zoom) {
+            case 'day':
+                colWidth = 40;
+                while (curr <= maxDate) {
+                    periods.push({
+                        label: curr.toLocaleDateString('es', { day: '2-digit', month: 'short' }),
+                        date: new Date(curr),
+                        key: curr.toISOString().split('T')[0]
+                    });
+                    curr.setDate(curr.getDate() + 1);
+                }
+                break;
+
+            case 'week':
+                colWidth = 80;
+                // Align to Monday
+                const firstMonday = new Date(curr);
+                firstMonday.setDate(curr.getDate() - curr.getDay() + 1);
+                curr = firstMonday;
+                while (curr <= maxDate) {
+                    const weekEnd = new Date(curr);
+                    weekEnd.setDate(curr.getDate() + 6);
+                    periods.push({
+                        label: `${curr.getDate()}/${curr.getMonth() + 1} - ${weekEnd.getDate()}/${weekEnd.getMonth() + 1}`,
+                        date: new Date(curr),
+                        key: `W${curr.toISOString().split('T')[0]}`
+                    });
+                    curr.setDate(curr.getDate() + 7);
+                }
+                break;
+
+            case 'quarter':
+                colWidth = 150;
+                curr = new Date(minDate.getFullYear(), Math.floor(minDate.getMonth() / 3) * 3, 1);
+                while (curr <= maxDate) {
+                    const q = Math.floor(curr.getMonth() / 3) + 1;
+                    periods.push({
+                        label: `T${q} ${curr.getFullYear()}`,
+                        date: new Date(curr),
+                        key: `Q${q}-${curr.getFullYear()}`
+                    });
+                    curr.setMonth(curr.getMonth() + 3);
+                }
+                break;
+
+            case 'month':
+            default:
+                colWidth = 100;
+                while (curr <= maxDate) {
+                    periods.push({
+                        label: curr.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' }),
+                        date: new Date(curr),
+                        key: `${curr.getFullYear()}-${curr.getMonth()}`
+                    });
+                    curr.setMonth(curr.getMonth() + 1);
+                }
+                break;
         }
 
-        const numMonths = months.length;
-        const tableMinWidth = (numMonths * 100) + 300 + 'px'; // Dynamic width
+        const numPeriods = periods.length;
+        const tableMinWidth = (numPeriods * colWidth) + 300 + 'px';
 
         let gridHtml = `
             <div class="gantt-toolbar">
@@ -137,7 +190,7 @@ const GanttModule = {
                         <i class="far fa-calendar-check"></i> Hoy
                     </button>
                     <div class="text-sm text-slate-500">
-                        Mostrando ${data.length} actividades
+                        Mostrando ${data.length} actividades | Escala: <strong>${zoom}</strong>
                     </div>
                 </div>
                 <div class="text-sm font-bold text-slate-500">
@@ -146,14 +199,14 @@ const GanttModule = {
             </div>
 
             <div class="gantt-scroll-container" id="ganttScrollArea">
-                <div class="gantt-table" style="grid-template-columns: 240px repeat(${numMonths}, 1fr); min-width: ${tableMinWidth};">
+                <div class="gantt-table" style="grid-template-columns: 240px repeat(${numPeriods}, ${colWidth}px); min-width: ${tableMinWidth};">
                     
                     <!-- Header -->
                     <div class="gantt-header-cell">Actividad</div>
-                    ${months.map(m => `<div class="gantt-header-cell text-capitalize">${m.label}</div>`).join('')}
+                    ${periods.map(p => `<div class="gantt-header-cell text-capitalize" style="font-size: ${zoom === 'day' ? '10px' : '12px'}">${p.label}</div>`).join('')}
 
                     <!-- Current Date line can only be drawn if "today" is in range -->
-                    ${GanttModule.getTodayLine(months)}
+                    ${GanttModule.getTodayLine(periods)}
         `;
 
         data.forEach(item => {
@@ -167,13 +220,7 @@ const GanttModule = {
 
         container.innerHTML = `<div class="gantt-view-container">${gridHtml}</div>`;
 
-        // Re-attach listeners is safer or delegated
-        // The dragging logic uses "ganttScrollArea" which is new each render.
-        // We should move dragging logic to be delegated or re-attach.
-        // But setupInteractions was called once in Init. 
-        // It attached to scrollArea? Yes "getElementById('ganttScrollArea')".
-        // If we overwrite innerHTML, the element is gone.
-        // So we must re-attach interactions.
+        // Re-attach interactions after re-render
         GanttModule.setupInteractions();
     },
 
@@ -314,32 +361,67 @@ const GanttModule = {
         });
     },
 
-    // #26 - Render Minimap
+    // #26 - Render Progress Summary Bar
     renderMinimap: () => {
         const container = document.getElementById('ganttMinimapContainer');
-        if (!container || !window.Enhancements) return;
+        if (!container) return;
 
         const data = GanttModule.state.filteredData;
-        const minDate = GanttModule.state.minDate;
-        const maxDate = GanttModule.state.maxDate;
-        const totalSpan = maxDate - minDate;
+        if (!data || data.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
 
-        const minimapData = data.slice(0, 20).map(item => {
-            const start = new Date(item.fecha_inicio);
-            const end = new Date(item.fecha_fin);
-            const startPercent = ((start - minDate) / totalSpan) * 100;
-            const widthPercent = Math.max(2, ((end - start) / totalSpan) * 100);
+        // Calculate status counts
+        let completed = 0, inProgress = 0, pending = 0, planned = 0;
 
+        data.forEach(item => {
             const status = (item.status || '').toUpperCase();
-            let color = '#94a3b8';
-            if (status === 'COMPLETADO' || status === 'FINALIZADO') color = '#22c55e';
-            else if (status === 'EN PROGRESO') color = '#3b82f6';
-            else if (status === 'PENDIENTE') color = '#ef4444';
-
-            return { startPercent, widthPercent, color };
+            if (status === 'COMPLETADO' || status === 'FINALIZADO' || status === 'LISTO') {
+                completed++;
+            } else if (status === 'EN PROGRESO' || status === 'EJECUCIÓN') {
+                inProgress++;
+            } else if (status === 'PENDIENTE' || status === 'ATRASADO') {
+                pending++;
+            } else {
+                planned++;
+            }
         });
 
-        Enhancements.GanttMinimap.render(container, minimapData, 30);
+        const total = data.length;
+        const pctCompleted = ((completed / total) * 100).toFixed(1);
+        const pctInProgress = ((inProgress / total) * 100).toFixed(1);
+        const pctPending = ((pending / total) * 100).toFixed(1);
+        const pctPlanned = ((planned / total) * 100).toFixed(1);
+
+        container.innerHTML = `
+            <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm font-bold text-slate-700">Progreso General del Proyecto</span>
+                    <span class="text-sm text-slate-500">${total} actividades</span>
+                </div>
+                <div class="flex h-6 rounded-lg overflow-hidden bg-slate-100">
+                    ${completed > 0 ? `<div class="bg-emerald-500 flex items-center justify-center" style="width: ${pctCompleted}%">
+                        <span class="text-[10px] font-bold text-white">${pctCompleted > 8 ? pctCompleted + '%' : ''}</span>
+                    </div>` : ''}
+                    ${inProgress > 0 ? `<div class="bg-blue-500 flex items-center justify-center" style="width: ${pctInProgress}%">
+                        <span class="text-[10px] font-bold text-white">${pctInProgress > 8 ? pctInProgress + '%' : ''}</span>
+                    </div>` : ''}
+                    ${pending > 0 ? `<div class="bg-red-500 flex items-center justify-center" style="width: ${pctPending}%">
+                        <span class="text-[10px] font-bold text-white">${pctPending > 8 ? pctPending + '%' : ''}</span>
+                    </div>` : ''}
+                    ${planned > 0 ? `<div class="bg-slate-300 flex items-center justify-center" style="width: ${pctPlanned}%">
+                        <span class="text-[10px] font-bold text-slate-600">${pctPlanned > 8 ? pctPlanned + '%' : ''}</span>
+                    </div>` : ''}
+                </div>
+                <div class="flex justify-between mt-2 text-xs text-slate-500">
+                    <span><strong class="text-emerald-600">${completed}</strong> Completadas</span>
+                    <span><strong class="text-blue-600">${inProgress}</strong> En Progreso</span>
+                    <span><strong class="text-red-600">${pending}</strong> Pendientes</span>
+                    <span><strong class="text-slate-600">${planned}</strong> Planificadas</span>
+                </div>
+            </div>
+        `;
     },
 
     // Update info display
