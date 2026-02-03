@@ -72,20 +72,23 @@ const ChatModule = {
     },
 
     // Send chat message
-    sendChat: async () => {
+    sendChat: async (overrideMessage = null) => {
         const input = document.getElementById('repoChatInput');
         const messagesContainer = document.getElementById('repoChatMessages');
         if (!input || !messagesContainer) return;
 
-        const userMessage = input.value.trim();
+        // Ensure overrideMessage is a string if it's an event object (just in case)
+        if (typeof overrideMessage === 'object') overrideMessage = null;
+
+        const userMessage = overrideMessage || input.value.trim();
         if (!userMessage) return;
 
-        // Clear input
-        input.value = '';
+        // Clear input only if typed
+        if (!overrideMessage) input.value = '';
 
         // Add user message to UI
-        messagesContainer.innerHTML += `
-            <div class="flex gap-3 justify-end">
+        messagesContainer.insertAdjacentHTML('beforeend', `
+            <div class="flex gap-3 justify-end mb-4">
                 <div class="bg-indigo-500 text-white p-3 rounded-xl rounded-tr-none shadow-sm text-sm max-w-[80%]">
                     ${ChatModule.escapeHtml(userMessage)}
                 </div>
@@ -93,12 +96,12 @@ const ChatModule = {
                     <i class="fas fa-user text-slate-500 text-sm"></i>
                 </div>
             </div>
-        `;
+        `);
 
         // Add loading indicator
         const loadingId = 'chat-loading-' + Date.now();
-        messagesContainer.innerHTML += `
-            <div class="flex gap-3" id="${loadingId}">
+        messagesContainer.insertAdjacentHTML('beforeend', `
+            <div class="flex gap-3 mb-4" id="${loadingId}">
                 <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <i class="fas fa-robot text-indigo-600 text-sm"></i>
                 </div>
@@ -106,7 +109,7 @@ const ChatModule = {
                     <i class="fas fa-spinner fa-spin mr-2"></i>Pensando...
                 </div>
             </div>
-        `;
+        `);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
         try {
@@ -116,20 +119,20 @@ const ChatModule = {
             document.getElementById(loadingId)?.remove();
 
             // Add AI response
-            messagesContainer.innerHTML += `
-                <div class="flex gap-3">
+            messagesContainer.insertAdjacentHTML('beforeend', `
+                <div class="flex gap-3 mb-4">
                     <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
                         <i class="fas fa-robot text-indigo-600 text-sm"></i>
                     </div>
-                    <div class="bg-white p-3 rounded-xl rounded-tl-none shadow-sm text-sm text-slate-700 max-w-[80%]">
+                    <div class="bg-white p-3 rounded-xl rounded-tl-none shadow-sm text-sm text-slate-700 max-w-[85%]">
                         ${ChatModule.formatResponse(response)}
                     </div>
                 </div>
-            `;
+            `);
         } catch (error) {
             document.getElementById(loadingId)?.remove();
-            messagesContainer.innerHTML += `
-                <div class="flex gap-3">
+            messagesContainer.insertAdjacentHTML('beforeend', `
+                <div class="flex gap-3 mb-4">
                     <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
                         <i class="fas fa-exclamation-triangle text-red-500 text-sm"></i>
                     </div>
@@ -137,7 +140,7 @@ const ChatModule = {
                         Error: ${error.message || 'No se pudo conectar con el asistente'}
                     </div>
                 </div>
-            `;
+            `);
         }
 
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -160,7 +163,14 @@ ${docsSummary}
 
 Responde las consultas del usuario basándote en esta información. 
 Si la pregunta no está relacionada con los documentos, indica que no tienes esa información.
-Responde en español de forma concisa y profesional.`;
+Responde en español de forma concisa y profesional.
+
+IMPORTANTE: 
+Al final de tu respuesta, sugieres siempre 3 preguntas de seguimiento breves que el usuario podría hacer a continuación.
+Debes incluirlas al final de tu respuesta en un formato especial:
+[SUGERENCIA: Pregunta 1]
+[SUGERENCIA: Pregunta 2]
+[SUGERENCIA: Pregunta 3]`;
 
         const response = await fetch(API_URL, {
             method: 'POST',
@@ -193,13 +203,38 @@ Responde en español de forma concisa y profesional.`;
         return div.innerHTML;
     },
 
-    // Format AI response with markdown-like styling
+    // Format AI response with markdown-like styling & suggestion buttons
     formatResponse: (text) => {
-        return text
+        // Extract suggestions
+        const suggestionRegex = /\[SUGERENCIA: (.*?)\]/g;
+        let suggestionsHTML = '<div class="mt-3 flex flex-col gap-2">';
+        let hasSuggestions = false;
+
+        const cleanText = text.replace(suggestionRegex, (match, question) => {
+            hasSuggestions = true;
+            suggestionsHTML += `
+                <button onclick="ChatModule.sendChat('${question.replace(/'/g, "\\'")}')" 
+                    class="text-left text-xs bg-indigo-50 border border-indigo-100 text-indigo-600 px-3 py-2 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-2">
+                    <i class="fas fa-reply text-[10px]"></i> ${question}
+                </button>`;
+            return ''; // Remove from main text
+        }).trim();
+
+        suggestionsHTML += '</div>';
+
+        // Format Main Text
+        let formatted = cleanText
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n\n/g, '<br><br>') // Paragraphs
             .replace(/\n/g, '<br>')
             .replace(/- /g, '• ');
+
+        if (hasSuggestions) {
+            formatted += suggestionsHTML;
+        }
+
+        return formatted;
     },
 
     // Clear chat history
