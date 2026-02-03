@@ -157,17 +157,34 @@ const StatsModule = {
             });
         }
 
-        // Product/Component Chart (Horizontal Bar)
-        const productCounts = {};
+        // Product/Component Chart (Stacked Horizontal Bar by Status)
+        const productStatusCounts = {};
         data.forEach(i => {
-            const p = i.product || i.component || 'Sin Producto';
-            productCounts[p] = (productCounts[p] || 0) + 1;
+            const p = i.product_code || 'Sin Producto';
+            const s = (i.status || 'Pendiente').toUpperCase();
+
+            if (!productStatusCounts[p]) {
+                productStatusCounts[p] = { completed: 0, inProgress: 0, pending: 0, other: 0, total: 0 };
+            }
+
+            productStatusCounts[p].total++;
+            if (s === 'COMPLETADO' || s === 'FINALIZADO' || s === 'LISTO') {
+                productStatusCounts[p].completed++;
+            } else if (s === 'EN PROGRESO' || s === 'EJECUCIÓN') {
+                productStatusCounts[p].inProgress++;
+            } else if (s === 'PENDIENTE' || s === 'ATRASADO') {
+                productStatusCounts[p].pending++;
+            } else {
+                productStatusCounts[p].other++;
+            }
         });
 
-        // Sort by count and take top 8
-        const sortedProducts = Object.entries(productCounts)
-            .sort((a, b) => b[1] - a[1])
+        // Sort by total and take top 8
+        const sortedProducts = Object.entries(productStatusCounts)
+            .sort((a, b) => b[1].total - a[1].total)
             .slice(0, 8);
+
+        const productLabels = sortedProducts.map(([k]) => k.length > 30 ? k.substring(0, 30) + '...' : k);
 
         const ctxProduct = document.getElementById('chartProduct');
         if (ctxProduct) {
@@ -176,24 +193,68 @@ const StatsModule = {
             StatsModule.charts.product = new Chart(ctxProduct, {
                 type: 'bar',
                 data: {
-                    labels: sortedProducts.map(([k]) => k.length > 25 ? k.substring(0, 25) + '...' : k),
-                    datasets: [{
-                        label: 'Actividades',
-                        data: sortedProducts.map(([, v]) => v),
-                        backgroundColor: '#4361EE',
-                        borderRadius: 6
-                    }]
+                    labels: productLabels,
+                    datasets: [
+                        {
+                            label: 'Completado',
+                            data: sortedProducts.map(([, v]) => v.completed),
+                            backgroundColor: '#22c55e',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'En Progreso',
+                            data: sortedProducts.map(([, v]) => v.inProgress),
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Pendiente',
+                            data: sortedProducts.map(([, v]) => v.pending),
+                            backgroundColor: '#ef4444',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Planificado',
+                            data: sortedProducts.map(([, v]) => v.other),
+                            backgroundColor: '#94a3b8',
+                            borderRadius: 4
+                        }
+                    ]
                 },
                 options: {
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false }
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                font: { family: 'Outfit', size: 11 },
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterTitle: (items) => {
+                                    const idx = items[0].dataIndex;
+                                    const product = sortedProducts[idx];
+                                    return `Total: ${product[1].total} actividades`;
+                                }
+                            }
+                        }
                     },
                     scales: {
-                        x: { beginAtZero: true, grid: { borderDash: [2, 2] } },
-                        y: { grid: { display: false } }
+                        x: {
+                            stacked: true,
+                            beginAtZero: true,
+                            grid: { borderDash: [2, 2] },
+                            ticks: { stepSize: 1 }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { display: false }
+                        }
                     }
                 }
             });

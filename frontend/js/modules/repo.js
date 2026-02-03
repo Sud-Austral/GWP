@@ -171,6 +171,7 @@ const RepoModule = {
             Utils.updateActiveTags('repoActiveChips', filterConfig, activeValObj);
 
             RepoModule.render(filtered);
+            RepoModule.setFilteredDocsForChat(filtered);
         };
 
         inputs.forEach(id => {
@@ -511,5 +512,17 @@ const RepoModule = {
             RepoModule.loadData();
             Utils.showToast('Documento eliminado', 'success');
         } catch (e) { Utils.showToast("Error eliminando", 'error'); }
-    }
+    },
+
+    // ========== Chat Delegation to ChatModule ==========
+    toggleChat: () => ChatModule.toggleChat(),
+    sendChat: () => ChatModule.sendChat(),
+    setFilteredDocsForChat: (docs) => ChatModule.setFilteredDocs(docs)
 };
+
+// Initialize ChatModule with RepoModule data source
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.ChatModule) {
+        ChatModule.setDataSource(() => RepoModule.data);
+    }
+});

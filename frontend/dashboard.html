@@ -866,6 +866,60 @@
                 <div id="repoGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8">
                     <!-- Cards injected by JS -->
                 </div>
+
+                <!-- AI Chat Floating Button -->
+                <button id="repoChatBtn" onclick="RepoModule.toggleChat()"
+                    class="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 flex items-center justify-center z-50"
+                    data-tooltip="Consultar con IA">
+                    <i class="fas fa-robot text-xl"></i>
+                </button>
+
+                <!-- AI Chat Panel -->
+                <div id="repoChatPanel"
+                    class="fixed bottom-24 right-8 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 hidden overflow-hidden">
+                    <div
+                        class="bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                                <i class="fas fa-robot text-white"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-white">Asistente IA</div>
+                                <div class="text-xs text-white/70">Biblioteca Estratégica</div>
+                            </div>
+                        </div>
+                        <button onclick="RepoModule.toggleChat()" class="text-white/70 hover:text-white">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="repoChatMessages" class="h-80 overflow-y-auto p-4 space-y-4 bg-slate-50">
+                        <div class="flex gap-3">
+                            <div
+                                class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-robot text-indigo-600 text-sm"></i>
+                            </div>
+                            <div
+                                class="bg-white p-3 rounded-xl rounded-tl-none shadow-sm text-sm text-slate-700 max-w-[80%]">
+                                ¡Hola! Soy tu asistente para consultar la <strong>Biblioteca Estratégica</strong>.
+                                Pregúntame sobre los documentos, leyes, o cualquier información del repositorio.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 border-t border-slate-100 bg-white">
+                        <div class="flex gap-2">
+                            <input type="text" id="repoChatInput" placeholder="Escribe tu pregunta..."
+                                class="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                                onkeypress="if(event.key==='Enter') RepoModule.sendChat()">
+                            <button onclick="RepoModule.sendChat()"
+                                class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl transition-colors">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-2 text-center">
+                            <span id="repoChatContext">Contexto: todos los documentos</span>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- VIEW: Users -->
@@ -1293,6 +1347,7 @@
     <script src="js/modules/hitos.js?v=2.1"></script>
     <script src="js/modules/observaciones.js?v=2.1"></script>
     <script src="js/modules/documents.js?v=2.1"></script>
+    <script src="js/modules/chat.js?v=2.1"></script>
     <script src="js/modules/repo.js?v=2.1"></script>
     <script src="js/app.js?v=2.1"></script>
 </body>
