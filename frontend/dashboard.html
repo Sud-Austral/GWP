@@ -765,12 +765,14 @@
                             <select id="repoFilterType"
                                 class="form-select w-full text-xs py-2 h-10 bg-white border-slate-200 rounded-lg focus:border-blue-500">
                                 <option value="">Todos</option>
+                                <option value="Informe Técnico">Informe Técnico</option>
                                 <option value="Ley">Ley</option>
                                 <option value="Decreto">Decreto</option>
-                                <option value="Informe Técnico">Informe Técnico</option>
-                                <option value="Acta">Acta</option>
-                                <option value="Manual">Manual</option>
-                                <option value="Paper">Paper</option>
+                                <option value="Acta de Taller">Acta de Taller</option>
+                                <option value="Benchmark Internacional">Benchmark Internacional</option>
+                                <option value="Nota de Prensa">Nota de Prensa</option>
+                                <option value="Instrumento">Instrumento</option>
+                                <option value="Otro">Otro</option>
                             </select>
                         </div>
 
@@ -783,10 +785,10 @@
                                 class="form-select w-full text-xs py-2 h-10 bg-white border-slate-200 rounded-lg focus:border-blue-500">
                                 <option value="">Todos</option>
                                 <option value="Gobierno">Gobierno</option>
-                                <option value="Academia">Academia</option>
-                                <option value="ONG">ONG</option>
                                 <option value="Privado">Privado</option>
-                                <option value="Internacional">Internacional</option>
+                                <option value="ONG">ONG</option>
+                                <option value="Academia">Academia</option>
+                                <option value="Multilateral">Multilateral</option>
                             </select>
                         </div>
 
@@ -808,24 +810,14 @@
                             </select>
                         </div>
 
-                        <!-- Year -->
+                        <!-- Year (Dynamic Select) -->
                         <div class="group">
                             <label
                                 class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Año</label>
-                            <input type="number" id="repoFilterYear" placeholder="YYYY" min="1900" max="2100"
-                                class="form-input w-full text-xs py-2 h-10 bg-white border-slate-200 rounded-lg focus:border-blue-500">
-                        </div>
-
-                        <!-- Status -->
-                        <div class="group">
-                            <label
-                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Estado</label>
-                            <select id="repoFilterProcStatus"
+                            <select id="repoFilterYear"
                                 class="form-select w-full text-xs py-2 h-10 bg-white border-slate-200 rounded-lg focus:border-blue-500">
                                 <option value="">Todos</option>
-                                <option value="Pendiente">Pendiente</option>
-                                <option value="Resumido">Resumido</option>
-                                <option value="Indexado">Indexado</option>
+                                <!-- Populated dynamically -->
                             </select>
                         </div>
 
@@ -841,6 +833,24 @@
 
                     <!-- Active Chips -->
                     <div id="repoActiveChips" class="flex flex-wrap gap-2 mt-4 hidden"></div>
+                </div>
+
+                <!-- Stats Card -->
+                <div class="flex items-center gap-6 mb-6">
+                    <div
+                        class="bg-white px-6 py-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 text-xl">
+                            <i class="fas fa-book"></i>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-slate-800" id="repoTotalCount">-</div>
+                            <div class="text-xs text-slate-400 font-medium uppercase tracking-wider">Documentos</div>
+                        </div>
+                    </div>
+                    <div class="text-sm text-slate-500" id="repoFilterInfo">
+                        Mostrando todos los documentos
+                    </div>
                 </div>
 
                 <!-- Cards Grid -->
@@ -1176,6 +1186,7 @@
                         <option value="Acta de Taller">Acta de Taller</option>
                         <option value="Benchmark Internacional">Benchmark Internacional</option>
                         <option value="Nota de Prensa">Nota de Prensa</option>
+                        <option value="Instrumento">Instrumento</option>
                         <option value="Otro">Otro</option>
                     </select>
                 </div>

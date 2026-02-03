@@ -40,6 +40,7 @@ const RepoModule = {
             const data = await API.get('/repositorio');
             RepoModule.data = data || [];
             RepoModule.populateTags();
+            RepoModule.populateYears();
             RepoModule.render(RepoModule.data);
 
         } catch (e) {
@@ -72,9 +73,34 @@ const RepoModule = {
         });
     },
 
+    populateYears: () => {
+        const select = document.getElementById('repoFilterYear');
+        if (!select) return;
+
+        // Extract unique years from fecha_publicacion
+        const years = new Set();
+        RepoModule.data.forEach(item => {
+            if (item.fecha_publicacion) {
+                const year = item.fecha_publicacion.substring(0, 4);
+                if (year && /^\d{4}$/.test(year)) {
+                    years.add(year);
+                }
+            }
+        });
+
+        // Sort descending (newest first)
+        const sorted = Array.from(years).sort((a, b) => b - a);
+
+        // Populate
+        select.innerHTML = '<option value="">Todos</option>';
+        sorted.forEach(y => {
+            select.innerHTML += `<option value="${y}">${y}</option>`;
+        });
+    },
+
     // Simplified clearing
     clearFilters: () => {
-        ['repoSearch', 'repoFilterType', 'repoFilterSourceType', 'repoFilterOrigin', 'repoFilterYear', 'repoFilterProcStatus', 'repoFilterTags']
+        ['repoSearch', 'repoFilterType', 'repoFilterSourceType', 'repoFilterOrigin', 'repoFilterYear', 'repoFilterTags']
             .forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
@@ -89,7 +115,7 @@ const RepoModule = {
     setupFilters: () => {
         const inputs = [
             'repoSearch', 'repoFilterType', 'repoFilterSourceType',
-            'repoFilterOrigin', 'repoFilterYear', 'repoFilterProcStatus', 'repoFilterTags'
+            'repoFilterOrigin', 'repoFilterYear', 'repoFilterTags'
         ];
 
         const filter = () => {
@@ -98,7 +124,6 @@ const RepoModule = {
             const fSrcType = document.getElementById('repoFilterSourceType')?.value.toLowerCase() || '';
             const fOrigin = document.getElementById('repoFilterOrigin')?.value.toLowerCase() || '';
             const fYear = document.getElementById('repoFilterYear')?.value || '';
-            const fStatus = document.getElementById('repoFilterProcStatus')?.value.toLowerCase() || '';
             const fTag = document.getElementById('repoFilterTags')?.value.toLowerCase() || '';
 
             const filtered = RepoModule.data.filter(item => {
@@ -115,8 +140,6 @@ const RepoModule = {
 
                 const originMatch = !fOrigin || (item.fuente_origen || '').toLowerCase().includes(fOrigin);
 
-                const statusMatch = !fStatus || (item.estado_procesamiento || 'pendiente').toLowerCase() === fStatus;
-
                 // Exact tag match (within CSV string)
                 const tagsMatch = !fTag || (item.etiquetas || '').toLowerCase().split(',').map(t => t.trim()).includes(fTag);
 
@@ -128,7 +151,7 @@ const RepoModule = {
                     yearMatch = false;
                 }
 
-                return textMatch && typeMatch && srcTypeMatch && originMatch && statusMatch && yearMatch && tagsMatch;
+                return textMatch && typeMatch && srcTypeMatch && originMatch && yearMatch && tagsMatch;
             });
 
             // Visual Chips
@@ -137,13 +160,12 @@ const RepoModule = {
                 repoFilterSourceType: document.getElementById('repoFilterSourceType')?.value,
                 repoFilterOrigin: document.getElementById('repoFilterOrigin')?.value,
                 repoFilterYear: document.getElementById('repoFilterYear')?.value,
-                repoFilterProcStatus: document.getElementById('repoFilterProcStatus')?.value,
                 repoFilterTags: document.getElementById('repoFilterTags')?.value,
                 repoSearch: document.getElementById('repoSearch')?.value
             };
             const filterConfig = [
                 { id: 'repoFilterType' }, { id: 'repoFilterSourceType' }, { id: 'repoFilterOrigin' },
-                { id: 'repoFilterYear' }, { id: 'repoFilterProcStatus' }, { id: 'repoFilterTags' },
+                { id: 'repoFilterYear' }, { id: 'repoFilterTags' },
                 { id: 'repoSearch' }
             ];
             Utils.updateActiveTags('repoActiveChips', filterConfig, activeValObj);
@@ -163,6 +185,9 @@ const RepoModule = {
         const container = document.getElementById('repoGrid');
         if (!container) return;
 
+        // Update stats card
+        RepoModule.updateStats(data);
+
         if (!data || data.length === 0) {
             container.innerHTML = `
                 <div class="col-span-full text-center p-12 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
@@ -175,6 +200,32 @@ const RepoModule = {
         }
 
         container.innerHTML = data.map(item => RepoModule.renderCard(item)).join('');
+    },
+
+    updateStats: (filteredData) => {
+        const countEl = document.getElementById('repoTotalCount');
+        const infoEl = document.getElementById('repoFilterInfo');
+
+        if (countEl) {
+            const count = filteredData ? filteredData.length : 0;
+            // Animate count
+            if (Utils.animateValue) {
+                Utils.animateValue('repoTotalCount', 0, count, 500);
+            } else {
+                countEl.textContent = count;
+            }
+        }
+
+        if (infoEl) {
+            const total = RepoModule.data.length;
+            const filtered = filteredData ? filteredData.length : 0;
+
+            if (filtered === total) {
+                infoEl.textContent = 'Mostrando todos los documentos';
+            } else {
+                infoEl.innerHTML = `Mostrando <strong>${filtered}</strong> de <strong>${total}</strong> documentos`;
+            }
+        }
     },
 
     renderCard: (item) => {
