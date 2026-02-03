@@ -1,104 +1,70 @@
 
 const ObservacionesModule = {
+    data: [],
+
     init: async () => {
-        ObservacionesModule.loadData();
+        const container = document.getElementById('obsGrid');
+        if (container) {
+            const skeleton = `
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex gap-4 mb-4 animate-pulse">
+                    <div class="w-10 h-10 rounded-full bg-slate-200 shrink-0"></div>
+                    <div class="flex-1 space-y-3">
+                        <div class="flex justify-between">
+                            <div class="h-4 bg-slate-200 rounded w-1/3"></div>
+                            <div class="h-4 bg-slate-200 rounded w-20"></div>
+                        </div>
+                        <div class="h-3 bg-slate-200 rounded w-1/4"></div>
+                        <div class="h-20 bg-slate-200 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl"></div>
+                    </div>
+                </div>`;
+            container.innerHTML = Array(4).fill(skeleton).join('');
+        }
+
+        Utils.renderBreadcrumbs(['Inicio', 'Bitácora de Observaciones']);
+
+        const data = await API.get('/observaciones?t=' + Date.now());
+        ObservacionesModule.data = data || [];
+
+        Utils.setupCascadingFilters({
+            data: ObservacionesModule.data,
+            filters: [
+                { id: 'obsFilterProduct', key: 'product_code' },
+                { id: 'obsFilterResp', key: 'primary_responsible' }, // Activity Responsible
+                { id: 'obsFilterStatus', key: 'status' } // Activity Status
+            ],
+            chipsContainerId: 'obsActiveChips',
+            search: {
+                id: 'obsSearch',
+                keys: ['texto', 'usuario_nombre', 'task_name', 'activity_code']
+            },
+            onFilter: (filtered) => {
+                ObservacionesModule.render(filtered);
+            }
+        });
+
         ObservacionesModule.setupEvents();
     },
 
-    setupEvents: () => {
-        document.getElementById('btnNewObsGlobal')?.addEventListener('click', async () => {
-            Utils.openModal('obsGlobalModal');
-            await ObservacionesModule.loadActivities();
-        });
-
-        const form = document.getElementById('obsGlobalForm');
-        if (form) {
-            // Remove previous listeners hack
-            const newForm = form.cloneNode(true);
-            form.parentNode.replaceChild(newForm, form);
-
-            newForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                await ObservacionesModule.save();
-            });
-        }
-    },
-
-    loadActivities: async () => {
-        const select = document.getElementById('obsGlobalSelect');
-        if (!select) return;
-
-        if (select.options.length > 1) return; // Already loaded
-
-        select.innerHTML = '<option>Cargando actividades...</option>';
-        try {
-            let data = window.appData?.plan;
-            if (!data) {
-                data = await API.get('/plan-maestro');
-            }
-
-            if (data) {
-                select.innerHTML = '<option value="">Seleccione una actividad...</option>' +
-                    data.map(p => `<option value="${p.id}">${p.activity_code} - ${p.task_name.substring(0, 60)}...</option>`).join('');
-            }
-        } catch (e) {
-            console.error(e);
-            select.innerHTML = '<option>Error cargando</option>';
-        }
-    },
-
-    save: async () => {
-        const planId = document.getElementById('obsGlobalSelect').value;
-        const text = document.getElementById('obsGlobalText').value;
-
-        if (!planId || !text.trim()) {
-            alert("Complete todos los campos");
-            return;
-        }
-
-        try {
-            await API.post(`/plan-maestro/${planId}/observaciones`, { texto: text });
-
-            Utils.closeModal('obsGlobalModal');
-            document.getElementById('obsGlobalForm').reset();
-
-            // Reload feed
-            ObservacionesModule.loadData();
-
-            alert("Observación agregada exitosamente");
-        } catch (e) {
-            console.error(e);
-            alert("Error al guardar la observación");
-        }
-    },
-
-    loadData: async () => {
+    render: (data) => {
         const container = document.getElementById('obsGrid');
         if (!container) return;
 
-        container.innerHTML = '<div class="text-center p-8 text-slate-400">Cargando bitácora...</div>';
-
-        try {
-            const data = await API.get('/observaciones?t=' + Date.now());
-
-            if (!data || data.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full text-center p-12 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-                        <i class="far fa-comments text-4xl text-slate-300 mb-4"></i>
-                        <h3 class="text-lg font-medium text-slate-600">Sin Observaciones</h3>
-                        <p class="text-slate-400 text-sm mt-1">No hay comentarios registrados en el sistema.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            // Render Feed
-            container.innerHTML = data.map(obs => ObservacionesModule.renderCard(obs)).join('');
-
-        } catch (e) {
-            container.innerHTML = '<div class="text-red-500 text-center">Error cargando observaciones</div>';
+        if (!data || data.length === 0) {
+            container.innerHTML = `
+                <div class="col-span-full text-center p-12 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+                    <i class="far fa-comments text-4xl text-slate-300 mb-4"></i>
+                    <h3 class="text-lg font-medium text-slate-600">Sin Observaciones</h3>
+                    <p class="text-slate-400 text-sm mt-1">No hay comentarios registrados con los filtros actuales.</p>
+                </div>
+            `;
+            return;
         }
+
+        container.innerHTML = data.map(obs => ObservacionesModule.renderCard(obs)).join('');
     },
+
+    // Legacy support for reload
+    loadData: () => ObservacionesModule.init(),
 
     renderCard: (obs) => {
         // Initials & Color
@@ -166,10 +132,11 @@ const ObservacionesModule = {
                 const res = await API.put(`/observaciones/${id}`, { texto: newText });
                 if (res && !res.error) {
                     ObservacionesModule.loadData();
+                    Utils.showToast('Comentario editado', 'success');
                 } else {
-                    alert("No tienes permiso o hubo un error.");
+                    Utils.showToast("No tienes permiso o hubo un error.", 'error');
                 }
-            } catch (e) { alert("Error al editar"); }
+            } catch (e) { Utils.showToast("Error al editar", 'error'); }
         }
     },
 
@@ -179,9 +146,10 @@ const ObservacionesModule = {
             const res = await API.delete(`/observaciones/${id}`);
             if (res && !res.error) {
                 ObservacionesModule.loadData();
+                Utils.showToast('Comentario eliminado', 'success');
             } else {
-                alert("No tienes permiso o hubo un error.");
+                Utils.showToast("No tienes permiso o hubo un error.", 'error');
             }
-        } catch (e) { alert("Error al eliminar"); }
+        } catch (e) { Utils.showToast("Error al eliminar", 'error'); }
     }
 };

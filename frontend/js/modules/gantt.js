@@ -16,6 +16,7 @@ const GanttModule = {
         const container = document.getElementById('ganttChart');
         container.innerHTML = '<div class="text-center p-4">Cargando...</div>';
 
+        Utils.renderBreadcrumbs(['Inicio', 'Carta Gantt Global']);
 
         // Always fetch fresh data to define single source of truth from Server
         const data = await API.get('/plan-maestro?t=' + Date.now());
@@ -29,8 +30,14 @@ const GanttModule = {
             data: GanttModule.state.data,
             filters: [
                 { id: 'ganttFilterProduct', key: 'product_code' },
-                { id: 'ganttFilterResp', key: 'primary_responsible' }
+                { id: 'ganttFilterResp', key: 'primary_responsible' },
+                { id: 'ganttFilterStatus', key: 'status' }
             ],
+            chipsContainerId: 'ganttActiveChips',
+            search: {
+                id: 'ganttSearch',
+                keys: ['task_name', 'activity_code']
+            },
             onFilter: (filtered) => {
                 GanttModule.state.filteredData = filtered;
                 GanttModule.calcDateRange();
@@ -42,20 +49,31 @@ const GanttModule = {
     },
 
     clearFilters: () => {
-        document.getElementById('ganttFilterProduct').value = '';
-        document.getElementById('ganttFilterResp').value = '';
+        const ids = ['ganttFilterProduct', 'ganttFilterResp', 'ganttFilterStatus', 'ganttSearch'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
         GanttModule.applyFilters();
     },
 
     applyFilters: () => {
         const fProd = document.getElementById('ganttFilterProduct')?.value.toLowerCase() || '';
         const fResp = document.getElementById('ganttFilterResp')?.value.toLowerCase() || '';
+        const fStat = document.getElementById('ganttFilterStatus')?.value.toLowerCase() || '';
+        const fSearch = document.getElementById('ganttSearch')?.value.toLowerCase() || '';
 
         const raw = GanttModule.state.data;
         GanttModule.state.filteredData = raw.filter(item => {
-            const matchesProd = !fProd || (item.product_code || '').toLowerCase().includes(fProd) || (item.activity_code || '').toLowerCase().includes(fProd);
+            const matchesProd = !fProd || (item.product_code || '').toLowerCase().includes(fProd);
             const matchesResp = !fResp || (item.primary_responsible || '').toLowerCase().includes(fResp);
-            return matchesProd && matchesResp && item.fecha_inicio && item.fecha_fin;
+            const matchesStat = !fStat || (item.status || '').toLowerCase() === fStat; // Exact match for status
+            // Search in Name OR Code
+            const matchesSearch = !fSearch ||
+                (item.task_name || '').toLowerCase().includes(fSearch) ||
+                (item.activity_code || '').toLowerCase().includes(fSearch);
+
+            return matchesProd && matchesResp && matchesStat && matchesSearch && item.fecha_inicio && item.fecha_fin;
         });
 
         GanttModule.calcDateRange();
@@ -149,8 +167,14 @@ const GanttModule = {
 
         container.innerHTML = `<div class="gantt-view-container">${gridHtml}</div>`;
 
-        // Scroll to start
-        // setTimeout(() => GanttModule.scrollToToday(), 100);
+        // Re-attach listeners is safer or delegated
+        // The dragging logic uses "ganttScrollArea" which is new each render.
+        // We should move dragging logic to be delegated or re-attach.
+        // But setupInteractions was called once in Init. 
+        // It attached to scrollArea? Yes "getElementById('ganttScrollArea')".
+        // If we overwrite innerHTML, the element is gone.
+        // So we must re-attach interactions.
+        GanttModule.setupInteractions();
     },
 
     renderRow: (item, minDate, maxDate) => {
@@ -164,11 +188,17 @@ const GanttModule = {
         if (leftPct < 0) { widthPct += leftPct; leftPct = 0; }
         if (widthPct < 0) widthPct = 0;
 
-        let barClass = 'bar-planned';
-        const now = new Date();
-        if (item.status === 'Completado') barClass = 'bar-completed';
-        else if (item.status === 'En Progreso') barClass = 'bar-active';
-        else if (end < now && item.status !== 'Completado') barClass = 'bar-late';
+        let barClass = 'bar-planned'; // Gray/Default
+        const status = (item.status || '').toUpperCase();
+
+        if (status === 'COMPLETADO' || status === 'FINALIZADO' || status === 'LISTO') barClass = 'bar-completed'; // Green
+        else if (status === 'EN PROGRESO' || status === 'EJECUCIÓN') barClass = 'bar-active'; // Blue
+        else if (status === 'PENDIENTE') barClass = 'bar-pending'; // Red Explicit
+        else {
+            // If delayed check
+            const now = new Date();
+            if (end < now) barClass = 'bar-late';
+        }
 
         // Grid lines matching dynamic months length
         // To be simpler, we just use empty cells corresponding to months.
@@ -261,6 +291,69 @@ const GanttModule = {
             const walk = (x - state.startX) * 1.5;
             scrollArea.scrollLeft = state.scrollLeft - walk;
         });
+
+        // #23 - Setup Zoom Controls
+        GanttModule.setupZoomControls();
+    },
+
+    // #23 - Zoom Controls Setup
+    setupZoomControls: () => {
+        const container = document.getElementById('ganttZoomControls');
+        if (!container) return;
+
+        container.querySelectorAll('.gantt-zoom-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const zoom = btn.dataset.zoom;
+                GanttModule.state.zoom = zoom;
+
+                container.querySelectorAll('.gantt-zoom-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                GanttModule.render();
+            });
+        });
+    },
+
+    // #26 - Render Minimap
+    renderMinimap: () => {
+        const container = document.getElementById('ganttMinimapContainer');
+        if (!container || !window.Enhancements) return;
+
+        const data = GanttModule.state.filteredData;
+        const minDate = GanttModule.state.minDate;
+        const maxDate = GanttModule.state.maxDate;
+        const totalSpan = maxDate - minDate;
+
+        const minimapData = data.slice(0, 20).map(item => {
+            const start = new Date(item.fecha_inicio);
+            const end = new Date(item.fecha_fin);
+            const startPercent = ((start - minDate) / totalSpan) * 100;
+            const widthPercent = Math.max(2, ((end - start) / totalSpan) * 100);
+
+            const status = (item.status || '').toUpperCase();
+            let color = '#94a3b8';
+            if (status === 'COMPLETADO' || status === 'FINALIZADO') color = '#22c55e';
+            else if (status === 'EN PROGRESO') color = '#3b82f6';
+            else if (status === 'PENDIENTE') color = '#ef4444';
+
+            return { startPercent, widthPercent, color };
+        });
+
+        Enhancements.GanttMinimap.render(container, minimapData, 30);
+    },
+
+    // Update info display
+    updateInfo: () => {
+        const info = document.getElementById('ganttInfo');
+        if (!info) return;
+
+        const data = GanttModule.state.filteredData;
+        const minDate = GanttModule.state.minDate;
+        const maxDate = GanttModule.state.maxDate;
+
+        if (minDate && maxDate) {
+            info.textContent = `${data.length} tareas | ${minDate.toLocaleDateString('es')} - ${maxDate.toLocaleDateString('es')}`;
+        }
     },
 
     // --- TOOLTIP ---
@@ -275,7 +368,6 @@ const GanttModule = {
         `;
         tip.style.display = 'block';
 
-        // Boundary check
         const x = e.clientX + 10;
         const windowW = window.innerWidth;
         if (x + 250 > windowW) {
@@ -292,13 +384,33 @@ const GanttModule = {
     },
 
     scrollToToday: () => {
-        // Reimplemented simply
-        // Hard to center exactly on % without strict pixel math, but approximate
         const scroll = document.getElementById('ganttScrollArea');
-        if (scroll) scroll.scrollLeft = scroll.scrollWidth / 2;
+        if (scroll) {
+            // Calculate position of today relative to date range
+            const now = new Date();
+            const minDate = GanttModule.state.minDate;
+            const maxDate = GanttModule.state.maxDate;
+
+            if (minDate && maxDate && now >= minDate && now <= maxDate) {
+                const totalSpan = maxDate - minDate;
+                const todayPos = (now - minDate) / totalSpan;
+                scroll.scrollLeft = (scroll.scrollWidth * todayPos) - (scroll.clientWidth / 2);
+            } else {
+                scroll.scrollLeft = scroll.scrollWidth / 2;
+            }
+        }
     }
+};
+
+// Override render to include new features
+const originalRender = GanttModule.render;
+GanttModule.render = function () {
+    originalRender.call(this);
+    GanttModule.renderMinimap();
+    GanttModule.updateInfo();
 };
 
 window.renderGantt = () => {
     GanttModule.init();
 };
+

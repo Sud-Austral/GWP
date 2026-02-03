@@ -3,6 +3,7 @@ const DocumentsModule = {
     data: [],
 
     init: async () => {
+        Utils.renderBreadcrumbs(['Inicio', 'Documentos Subidos']);
         const data = await API.get('/documentos');
         DocumentsModule.data = data || [];
 
@@ -11,8 +12,14 @@ const DocumentsModule = {
             data: DocumentsModule.data,
             filters: [
                 { id: 'docFilterProduct', key: 'product_code' },
-                { id: 'docFilterResp', key: 'uploader' }
+                { id: 'docFilterResp', key: 'primary_responsible' }, // Switched to Activity Responsible
+                { id: 'docFilterStatus', key: 'status' } // Activity Status
             ],
+            search: {
+                id: 'docSearch',
+                keys: ['nombre_archivo', 'task_name', 'activity_code']
+            },
+            chipsContainerId: 'docsActiveChips',
             onFilter: (filtered) => {
                 DocumentsModule.render(filtered);
             }
@@ -127,7 +134,7 @@ const DocumentsModule = {
             // Force refresh to update list and potential status in Plan
             DocumentsModule.init();
         } else {
-            alert('Error al eliminar: ' + (res?.error || 'Desconocido'));
+            Utils.showToast('Error al eliminar: ' + (res?.error || 'Desconocido'), 'error');
         }
     },
 
@@ -159,7 +166,7 @@ const DocumentsModule = {
         const file = fileInput.files[0];
 
         if (!planId || !file) {
-            alert("Seleccione actividad y archivo");
+            Utils.showToast('Seleccione actividad y archivo', 'error');
             return;
         }
 
@@ -180,10 +187,10 @@ const DocumentsModule = {
                 Utils.closeModal('docGlobalModal');
                 DocumentsModule.init(); // Reload
             } else {
-                alert("Error: " + json.error);
+                Utils.showToast('Error: ' + json.error, 'error');
             }
         } catch (err) {
-            alert("Error de red");
+            Utils.showToast('Error de red', 'error');
         }
     },
 

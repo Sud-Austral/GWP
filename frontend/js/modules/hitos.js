@@ -4,6 +4,21 @@ const HitosModule = {
     editingId: null,
 
     init: async () => {
+        const tbody = document.getElementById('hitosTableBody');
+        if (tbody) {
+            const skeletonRow = `
+                <tr class="animate-pulse border-b border-slate-50">
+                    <td class="p-4"><div class="h-4 bg-slate-100 rounded w-24"></div></td>
+                    <td class="p-4"><div class="h-4 bg-slate-100 rounded w-32"></div></td>
+                    <td class="p-4"><div class="h-4 bg-slate-100 rounded w-40"></div></td>
+                    <td class="p-4"><div class="h-4 bg-slate-100 rounded w-20"></div></td>
+                    <td class="p-4"><div class="h-4 bg-slate-100 rounded w-16"></div></td>
+                </tr>`;
+            tbody.innerHTML = Array(5).fill(skeletonRow).join('');
+        }
+
+        Utils.renderBreadcrumbs(['Inicio', 'Hitos e Inspectores']);
+
         const data = await API.get('/hitos');
         HitosModule.data = data || [];
 
@@ -11,8 +26,14 @@ const HitosModule = {
             data: HitosModule.data,
             filters: [
                 { id: 'hitoFilterProduct', key: 'product_code' },
+                { id: 'hitoFilterResp', key: 'primary_responsible' }, // Assuming backend provides this
                 { id: 'hitoFilterStatus', key: 'estado' }
             ],
+            chipsContainerId: 'hitosActiveChips',
+            search: {
+                id: 'hitoSearch',
+                keys: ['nombre', 'task_name', 'activity_code']
+            },
             onFilter: (filtered) => {
                 HitosModule.render(filtered);
             }
@@ -49,9 +70,9 @@ const HitosModule = {
         data.forEach(h => {
             const tr = document.createElement('tr');
 
-            let statusClass = 'badge badge-gray';
-            if (h.estado === 'Completado') statusClass = 'badge badge-green';
-            else if (h.estado === 'Pendiente') statusClass = 'badge badge-yellow';
+            let statusClass = 'badge badge-red';
+            if (h.estado === 'Completado' || h.estado === 'Finalizado') statusClass = 'badge badge-green';
+            else if (h.estado === 'Pendiente') statusClass = 'badge badge-red';
 
             tr.innerHTML = `
                 <td>
@@ -131,7 +152,8 @@ const HitosModule = {
         try {
             await API.delete(`/hitos/${id}`);
             HitosModule.init(); // Refresh list
-        } catch (e) { alert('Error eliminando'); }
+            Utils.showToast('Hito eliminado correctamente', 'success');
+        } catch (e) { Utils.showToast('Error eliminando hito', 'error'); }
     },
 
     save: async (e) => {
@@ -141,7 +163,7 @@ const HitosModule = {
         const fecha = document.getElementById('hitoGlobalDate').value;
         const desc = document.getElementById('hitoGlobalDesc').value;
 
-        if (!planId) { alert("Debe seleccionar una actividad"); return; }
+        if (!planId) { Utils.showToast("Debe seleccionar una actividad", 'error'); return; }
 
         const payload = {
             plan_maestro_id: planId,
@@ -160,6 +182,7 @@ const HitosModule = {
             }
             Utils.closeModal('hitoGlobalModal');
             HitosModule.init();
-        } catch (e) { alert("Error guardando hito"); }
+            Utils.showToast('Hito guardado correctamente', 'success');
+        } catch (e) { Utils.showToast("Error guardando hito", 'error'); }
     }
 };

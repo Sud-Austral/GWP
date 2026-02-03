@@ -352,7 +352,8 @@ def get_all_hitos(current_user_id):
         conn = get_db_connection()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT h.*, p.activity_code, p.task_name 
+                SELECT h.*, p.activity_code, p.task_name,
+                       p.product_code, p.primary_responsible, p.status as activity_status
                 FROM hitos h
                 JOIN plan_maestro p ON h.plan_maestro_id = p.id
                 ORDER BY h.fecha_estimada
@@ -453,7 +454,8 @@ def get_all_docs(current_user_id):
         conn = get_db_connection()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT d.*, p.activity_code, p.task_name, u.nombre as uploader
+                SELECT d.*, p.activity_code, p.task_name, u.nombre as uploader,
+                       p.product_code, p.primary_responsible, p.status
                 FROM documentos d
                 JOIN plan_maestro p ON d.plan_maestro_id = p.id
                 LEFT JOIN usuarios u ON d.uploaded_by = u.id
@@ -639,7 +641,8 @@ def get_all_observaciones(current_user_id):
             cur.execute("""
                 SELECT o.id, o.texto, o.created_at, 
                        u.nombre as usuario_nombre,
-                       p.activity_code, p.task_name, p.id as plan_id
+                       p.activity_code, p.task_name, p.id as plan_id,
+                       p.product_code, p.primary_responsible, p.status
                 FROM observaciones o
                 LEFT JOIN usuarios u ON o.usuario_id = u.id
                 JOIN plan_maestro p ON o.plan_maestro_id = p.id

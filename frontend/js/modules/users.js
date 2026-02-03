@@ -1,6 +1,7 @@
 
 const UsersModule = {
     init: async () => {
+        Utils.renderBreadcrumbs(['Configuración', 'Gestión de Usuarios']);
         UsersModule.loadUsers();
         UsersModule.setupEvents();
     },
@@ -91,8 +92,9 @@ const UsersModule = {
         if (res && !res.error) {
             Utils.closeModal('userModal');
             UsersModule.loadUsers();
+            Utils.showToast('Usuario guardado correctamente', 'success');
         } else {
-            alert('Error al guardar: ' + (res.error || 'Desconocido'));
+            Utils.showToast('Error al guardar: ' + (res.error || 'Desconocido'), 'error');
         }
     }
 };

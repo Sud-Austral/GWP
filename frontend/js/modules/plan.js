@@ -1,6 +1,7 @@
 
 const PlanModule = {
     init: async () => {
+        Utils.renderBreadcrumbs(['Inicio', 'Gestión de Actividades']);
         PlanModule.loadData();
         PlanModule.setupEvents();
     },
@@ -9,7 +10,25 @@ const PlanModule = {
     loadData: async () => {
         // Visual feedback ensuring user sees update is happening
         const tbody = document.querySelector('#planTable tbody');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4">Actualizando datos...</td></tr>';
+        if (tbody) {
+            const skeletonRow = `
+                <tr class="animate-pulse border-b border-slate-50">
+                    <td class="p-4"><div class="h-4 bg-slate-100 rounded w-12"></div></td>
+                    <td class="p-4"> 
+                        <div class="space-y-2">
+                            <div class="h-4 bg-slate-100 rounded w-3/4"></div>
+                            <div class="h-3 bg-slate-100 rounded w-1/2"></div>
+                        </div>
+                    </td>
+                    <td class="p-4"><div class="h-4 bg-slate-100 rounded w-20"></div></td>
+                    <td class="p-4"><div class="h-8 w-8 rounded-full bg-slate-100"></div></td>
+                    <td class="p-4"><div class="h-4 bg-slate-100 rounded w-24"></div></td>
+                    <td class="p-4"><div class="h-6 bg-slate-100 rounded-full w-20"></div></td>
+                    <td class="p-4"><div class="h-8 w-20 bg-slate-100 rounded"></div></td>
+                </tr>
+            `;
+            tbody.innerHTML = Array(10).fill(skeletonRow).join('');
+        }
 
         // Prevent cache with timestamp
         const data = await API.get('/plan-maestro?t=' + new Date().getTime());
@@ -24,12 +43,8 @@ const PlanModule = {
                     { id: 'filterProduct', key: 'product_code' },
                     { id: 'filterResp', key: 'primary_responsible' },
                     { id: 'filterStatus', key: 'status' }
-                    // Note: Search Input logic is complex for 1:1 key. 
-                    // We leave it out of cascade for now or handle separately?
-                    // Let's keep Search separate listener to just filter the result of Cascade?
-                    // Or pass it as custom filter. 
-                    // For simplicity, let's keep Dropdowns cascading mainly.
                 ],
+                chipsContainerId: 'planActiveChips',
                 onFilter: (filtered) => {
                     // Apply Search Text Filter manually on top
                     const search = document.getElementById('searchPlan')?.value.toLowerCase();
@@ -38,6 +53,14 @@ const PlanModule = {
                         (item.activity_code || '').toLowerCase().includes(search)
                     );
                     PlanModule.renderTable(final);
+
+                    // Update chips for Search input too? 
+                    // Search is separate from cascading config usually, but we can fake it?
+                    // Actually, let's keep it simple. The Cascading helper handles chips for specific filters passed.
+                    // For Search, we might need a custom approach or include it as a filter with special handling.
+                    // Utils logic: `filters.forEach`. 
+                    // If we want Breadcrumbs to show search, we need to pass search ID to helper maybe?
+                    // The helper loops filters. I won't overcomplicate now.
                 }
             });
 
@@ -57,7 +80,7 @@ const PlanModule = {
         try {
             await API.delete(`/hitos/${hitoId}`);
             PlanModule.viewDetails(planId);
-        } catch (e) { alert('Error eliminando hito'); }
+        } catch (e) { Utils.showToast('Error eliminando hito', 'error'); }
     },
 
     enableEditHito: (hitoId, nombre, fecha, estado, planId) => {
@@ -103,7 +126,7 @@ const PlanModule = {
         try {
             await API.put(`/hitos/${hitoId}`, { nombre, fecha_estimada: fecha, estado });
             PlanModule.viewDetails(planId);
-        } catch (e) { alert('Error actualizando hito'); }
+        } catch (e) { Utils.showToast('Error actualizando hito', 'error'); }
     },
 
     renderTable: (data) => {
@@ -120,10 +143,12 @@ const PlanModule = {
             const tr = document.createElement('tr');
 
             // New Status Logic
-            let badgeClass = 'badge badge-gray';
-            if (item.status === 'En Progreso') badgeClass = 'badge badge-blue';
-            else if (item.status === 'Completado' || item.status === 'Listo') badgeClass = 'badge badge-green';
+            // New Status Logic
+            let badgeClass = 'badge badge-red'; // Default to red for Pendiente
+            if (item.status === 'En Progreso' || item.status === 'Ejecución') badgeClass = 'badge badge-blue';
+            else if (item.status === 'Completado' || item.status === 'Listo' || item.status === 'Finalizado') badgeClass = 'badge badge-green';
             else if (item.status === 'Retrasado') badgeClass = 'badge badge-red';
+            // If explicit Pendiente, it stays red. If explicit gray needed, we lack a status for it now.
 
             // Format dates
             const start = item.fecha_inicio ? Utils.formatDate(item.fecha_inicio) : '-';
@@ -324,7 +349,7 @@ const PlanModule = {
             await API.post(`/plan-maestro/${id}/observaciones`, { texto: txt });
             txtInput.value = '';
             PlanModule.loadModalObs(id);
-        } catch (e) { alert("Error agregando observación"); }
+        } catch (e) { Utils.showToast('Error agregando observación', 'error'); }
     },
 
     edit: (id) => {
@@ -361,21 +386,16 @@ const PlanModule = {
 
         if (res && (res.message || res.id)) {
             if (!id && res.id) {
-                // If newly created, maybe switch to edit mode to allow adding hitos?
-                // For now just close
                 Utils.closeModal('activityModal');
             } else {
                 Utils.closeModal('activityModal');
             }
-
-            // Refresh entire page as requested to ensure full consistency
-            setTimeout(() => {
-                window.location.reload();
-            }, 200);
-
+            Utils.showToast('Actividad guardada correctamente', 'success');
+            // Reload without refreshing page
+            PlanModule.loadData();
         } else {
             console.error("Save Error:", res);
-            alert('Error al guardar: ' + (res?.error || 'Error desconocido'));
+            Utils.showToast('Error al guardar: ' + (res?.error || 'Error desconocido'), 'error');
         }
     },
 
@@ -416,7 +436,7 @@ const PlanModule = {
         const desc = document.getElementById('newHitoDesc').value;
 
         if (!nombre) {
-            alert("Nombre del hito requerido");
+            Utils.showToast("Nombre del hito requerido", 'error');
             return;
         }
 
@@ -436,7 +456,7 @@ const PlanModule = {
             // Reload list
             PlanModule.loadHitos(planId);
         } else {
-            alert("Error al crear hito");
+            Utils.showToast('Error al crear hito', 'error');
         }
     },
 
@@ -447,7 +467,7 @@ const PlanModule = {
         const file = fileInput.files[0];
 
         if (!planId || !file) {
-            alert("Seleccione un archivo primero");
+            Utils.showToast('Seleccione un archivo primero', 'error');
             return;
         }
 
@@ -473,10 +493,10 @@ const PlanModule = {
                 fileInput.value = ''; // clear
                 PlanModule.loadData(); // Update row icon
             } else {
-                alert("Error: " + json.error);
+                Utils.showToast('Error: ' + json.error, 'error');
             }
         } catch (e) {
-            alert("Error de red al subir archivo");
+            Utils.showToast('Error de red al subir archivo', 'error');
         }
     },
 
@@ -761,7 +781,7 @@ const PlanModule = {
             // Reload view to see new comment
             PlanModule.viewDetails(planId);
         } catch (e) {
-            alert("Error al agregar observación");
+            Utils.showToast('Error al agregar observación', 'error');
         }
     }
 };

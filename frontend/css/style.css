@@ -31,7 +31,7 @@
 }
 
 body {
-    font-family: 'Inter', -apple-system, sans-serif;
+    font-family: 'Outfit', -apple-system, sans-serif;
     font-size: 14px;
     background-color: var(--bg-main);
     color: var(--text-primary);
@@ -454,18 +454,20 @@ body {
 }
 
 .status-pendiente {
-    background: #fff7ed;
-    color: #c2410c;
+    background: #fef2f2;
+    color: #ef4444;
 }
 
 .status-progreso {
     background: #eff6ff;
-    color: #1d4ed8;
+    color: #3b82f6;
 }
 
-.status-listo {
+.status-listo,
+.status-completado,
+.status-finalizado {
     background: #f0fdf4;
-    color: #15803d;
+    color: #16a34a;
 }
 
 /* Utilities */
@@ -695,6 +697,12 @@ body {
     border: 1px solid #dc2626;
 }
 
+.bar-pending {
+    background: #ef4444;
+    /* Red for pending as requested explicitly */
+    border: 1px solid #dc2626;
+}
+
 /* Current Date Line */
 .current-date-line {
     position: absolute;
@@ -820,22 +828,24 @@ body {
 .clean-filters-btn:hover {
     background: #e2e8f0;
     color: var(--text-primary);
-}/* ==========================================================================
+}
+
+/* ==========================================================================
    PREMIUM DASHBOARD OVERRIDE - V2
    ========================================================================== */
 
 /* 1. Global Typography & Colors */
 :root {
-  --gradient-primary: linear-gradient(135deg, #4361EE 0%, #3F37C9 100%);
-  --shadow-premium: 0 10px 30px -10px rgba(67, 97, 238, 0.4);
-  --radius-xl: 16px;
+    --gradient-primary: linear-gradient(135deg, #4361EE 0%, #3F37C9 100%);
+    --shadow-premium: 0 10px 30px -10px rgba(67, 97, 238, 0.4);
+    --radius-xl: 16px;
 }
 
 /* 2. Modern Tables */
 .table-container {
     background: white;
     border-radius: var(--radius-xl);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
     border: 1px solid #f1f5f9;
     padding: 0;
     overflow: hidden;
@@ -853,7 +863,8 @@ thead {
 }
 
 thead th {
-    background: #f8fafc; /* Fallback */
+    background: #f8fafc;
+    /* Fallback */
     background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
     color: #475569;
     font-weight: 700;
@@ -897,12 +908,35 @@ tbody td {
     line-height: 1;
 }
 
-.badge-gray { background: #f1f5f9; color: #64748b; }
-.badge-green { background: #dcfce7; color: #16a34a; }
-.badge-blue { background: #dbeafe; color: #2563eb; }
-.badge-red { background: #fee2e2; color: #dc2626; }
-.badge-yellow { background: #fef9c3; color: #ca8a04; }
-.badge-purple { background: #f3e8ff; color: #9333ea; }
+.badge-gray {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.badge-green {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.badge-blue {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.badge-red {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.badge-yellow {
+    background: #fef9c3;
+    color: #ca8a04;
+}
+
+.badge-purple {
+    background: #f3e8ff;
+    color: #9333ea;
+}
 
 /* 4. Action Buttons (Grid/Table) */
 .btn-icon {
@@ -931,17 +965,22 @@ tbody td {
 }
 
 /* 5. Main Card Containers */
-.card, .stat-card, .filter-bar {
+.card,
+.stat-card,
+.filter-bar {
     border-radius: var(--radius-xl);
     border: 1px solid #f1f5f9;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
     background: white;
     padding: 24px;
     margin-bottom: 24px;
 }
 
 /* 6. Form Elements */
-input[type='text'], input[type='date'], select, textarea {
+input[type='text'],
+input[type='date'],
+select,
+textarea {
     border-radius: 12px;
     border: 1px solid #e2e8f0;
     padding: 10px 14px;
@@ -950,7 +989,9 @@ input[type='text'], input[type='date'], select, textarea {
     background: #f8fafc;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
     border-color: #4361EE;
     box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
     outline: none;
@@ -988,7 +1029,7 @@ input:focus, select:focus, textarea:focus {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    text-decoration: none; 
+    text-decoration: none;
 }
 
 .btn-secondary:hover {
@@ -1006,8 +1047,8 @@ input:focus, select:focus, textarea:focus {
 .modal-content {
     border-radius: 24px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255,255,255,0.8);
-    overflow: auto; 
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    overflow: auto;
 }
 
 /* 9. Scrollbar */
@@ -1015,13 +1056,49 @@ input:focus, select:focus, textarea:focus {
     width: 8px;
     height: 8px;
 }
+
 ::-webkit-scrollbar-track {
-    background: transparent; 
+    background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1; 
+    background: #cbd5e1;
     border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8; 
+    background: #94a3b8;
+}
+
+/* Animation Utilities */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 10px, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: .5;
+    }
 }

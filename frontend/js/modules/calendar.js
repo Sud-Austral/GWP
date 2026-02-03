@@ -3,7 +3,13 @@ const CalendarModule = {
     events: [],
     currentView: 'month',
 
+    state: {
+        showHistory: false
+    },
+
     init: async () => {
+        Utils.renderBreadcrumbs(['Inicio', 'Calendario de Hitos']);
+
         // Fetch Data
         const [plan, hitos] = await Promise.all([
             API.get('/plan-maestro'),
@@ -46,7 +52,26 @@ const CalendarModule = {
         events.sort((a, b) => a.date - b.date);
         CalendarModule.events = events;
 
+        // Render Buttons Logic Injection (Simple Hack since buttons are static in HTML usually)
+        // But checking dashboard.html, buttons might be there.
+        // Let's inject a button if missing?
+        // Better: Update render to manage button state if it exists, or inject it.
         CalendarModule.render('month');
+    },
+
+    toggleHistory: () => {
+        CalendarModule.state.showHistory = !CalendarModule.state.showHistory;
+        const btn = document.getElementById('btnCalHistory');
+        if (btn) {
+            btn.classList.toggle('btn-secondary');
+            btn.classList.toggle('text-blue-600'); // Optional visual
+            // btn.classList.toggle('btn-primary'); // Maybe just keep secondary but change icon/text
+            // Keeping secondary creates consistency with neighbor buttons
+            btn.innerHTML = CalendarModule.state.showHistory ? '<i class="fas fa-eye-slash"></i> Ocultar Histórico' : '<i class="fas fa-history"></i> Ver Histórico';
+        }
+
+        Utils.showToast(CalendarModule.state.showHistory ? 'Mostrando todo el historial' : 'Mostrando eventos recientes', 'info');
+        CalendarModule.render(CalendarModule.currentView);
     },
 
     render: (view = 'month') => {
@@ -56,17 +81,109 @@ const CalendarModule = {
 
         // Toggle Buttons State
         const btnMonth = document.getElementById('btnCalMonth');
+        const btnWeek = document.getElementById('btnCalWeek');
         const btnAgenda = document.getElementById('btnCalAgenda');
 
+        // Reset all to secondary
+        [btnMonth, btnWeek, btnAgenda].forEach(btn => {
+            if (btn) {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+            }
+        });
+
+        // Set active button
         if (view === 'month') {
             btnMonth?.classList.replace('btn-secondary', 'btn-primary');
-            btnAgenda?.classList.replace('btn-primary', 'btn-secondary');
             CalendarModule.renderMonthView(container);
+        } else if (view === 'week') {
+            btnWeek?.classList.replace('btn-secondary', 'btn-primary');
+            CalendarModule.renderWeekView(container);
         } else {
             btnAgenda?.classList.replace('btn-secondary', 'btn-primary');
-            btnMonth?.classList.replace('btn-primary', 'btn-secondary');
             CalendarModule.renderAgendaView(container);
         }
+    },
+
+    // #21 - Weekly View
+    renderWeekView: (container) => {
+        const offset = CalendarModule.weekOffset || 0;
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay() + 1 + (offset * 7)); // Monday + offset
+
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(startOfWeek);
+            d.setDate(startOfWeek.getDate() + i);
+            days.push(d);
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Filter events for this week
+        const weekEnd = new Date(days[6]);
+        weekEnd.setHours(23, 59, 59, 999);
+
+        let events = CalendarModule.events;
+        if (!CalendarModule.state.showHistory) {
+            events = events.filter(e => e.date >= today);
+        }
+
+        const weekEvents = events.filter(e => {
+            const d = new Date(e.date);
+            d.setHours(0, 0, 0, 0);
+            return d >= startOfWeek && d <= weekEnd;
+        });
+
+        container.innerHTML = `
+            <div class="mb-4 flex justify-between items-center">
+                <button class="btn btn-sm btn-outline" onclick="CalendarModule.navigateWeek(-1)">
+                    <i class="fas fa-chevron-left"></i> Semana Anterior
+                </button>
+                <h3 class="text-lg font-bold text-slate-700">
+                    ${startOfWeek.toLocaleDateString('es', { day: 'numeric', month: 'long' })} - 
+                    ${days[6].toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </h3>
+                <button class="btn btn-sm btn-outline" onclick="CalendarModule.navigateWeek(1)">
+                    Semana Siguiente <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-7 gap-2">
+                ${days.map(d => {
+            const isToday = d.toDateString() === today.toDateString();
+            const dayEvents = weekEvents.filter(e => {
+                const ed = new Date(e.date);
+                ed.setHours(0, 0, 0, 0);
+                return ed.toDateString() === d.toDateString();
+            });
+
+            return `
+                        <div class="min-h-[200px] p-3 rounded-xl border ${isToday ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-100'}">
+                            <div class="text-center mb-3">
+                                <div class="text-xs text-slate-400 uppercase">${d.toLocaleDateString('es', { weekday: 'short' })}</div>
+                                <div class="text-xl font-bold ${isToday ? 'text-blue-600' : 'text-slate-700'}">${d.getDate()}</div>
+                            </div>
+                            <div class="space-y-2">
+                                ${dayEvents.length > 0 ? dayEvents.map(e => `
+                                    <div class="text-xs p-2 rounded-lg ${e.type === 'hito' ? 'bg-amber-100 text-amber-800 border-l-2 border-amber-500' : 'bg-blue-100 text-blue-800 border-l-2 border-blue-500'}">
+                                        <div class="font-bold truncate">${e.title}</div>
+                                        <div class="opacity-70">${e.code}</div>
+                                    </div>
+                                `).join('') : '<div class="text-xs text-slate-300 text-center italic">Sin eventos</div>'}
+                            </div>
+                        </div>
+                    `;
+        }).join('')}
+            </div>
+        `;
+    },
+
+    navigateWeek: (direction) => {
+        // Store current week start and navigate
+        CalendarModule.weekOffset = (CalendarModule.weekOffset || 0) + direction;
+        CalendarModule.render('week');
     },
 
     renderMonthView: (container) => {
@@ -75,9 +192,26 @@ const CalendarModule = {
             return;
         }
 
+        // Filter Past/Future
+        const now = new Date();
+        const currentMonthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+
+        let displayEvents = CalendarModule.events;
+        if (!CalendarModule.state.showHistory) {
+            displayEvents = displayEvents.filter(e => {
+                const key = `${e.date.getUTCFullYear()}-${String(e.date.getUTCMonth() + 1).padStart(2, '0')}`;
+                return key >= currentMonthKey;
+            });
+        }
+
+        if (displayEvents.length === 0) {
+            container.innerHTML = '<div class="text-center p-4 text-slate-500">No hay eventos para mostrar (vencidos o futuros).</div>';
+            return;
+        }
+
         // Group by Month (YYYY-MM to sort correctly)
         const groups = {};
-        CalendarModule.events.forEach(e => {
+        displayEvents.forEach(e => {
             const key = `${e.date.getUTCFullYear()}-${String(e.date.getUTCMonth() + 1).padStart(2, '0')}`;
             if (!groups[key]) groups[key] = [];
             groups[key].push(e);
@@ -109,15 +243,27 @@ const CalendarModule = {
     },
 
     renderAgendaView: (container) => {
-        if (CalendarModule.events.length === 0) {
-            container.innerHTML = '<div class="text-center p-4 text-slate-500">No hay hitos ni fechas programadas.</div>';
+        // Filter Past/Future (Same logic as Month)
+        const now = new Date();
+        const currentMonthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+
+        let displayEvents = CalendarModule.events;
+        if (!CalendarModule.state.showHistory) {
+            displayEvents = displayEvents.filter(e => {
+                const key = `${e.date.getUTCFullYear()}-${String(e.date.getUTCMonth() + 1).padStart(2, '0')}`;
+                return key >= currentMonthKey;
+            });
+        }
+
+        if (displayEvents.length === 0) {
+            container.innerHTML = '<div class="text-center p-4 text-slate-500">No hay hitos ni fechas programadas (ajuste filtros o historial).</div>';
             return;
         }
 
         // List Layout Day by Day
         // Group by Day
         const days = {};
-        CalendarModule.events.forEach(e => {
+        displayEvents.forEach(e => {
             const key = `${e.date.getUTCFullYear()}-${String(e.date.getUTCMonth() + 1).padStart(2, '0')}-${String(e.date.getUTCDate()).padStart(2, '0')}`;
             if (!days[key]) days[key] = [];
             days[key].push(e);

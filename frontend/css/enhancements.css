@@ -1,0 +1,864 @@
+/* ==========================================================================
+   GWP ENHANCEMENTS - Premium UI Upgrades
+   ========================================================================== */
+
+/* #4 - Global Progress Bar (NProgress Style) */
+.global-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.global-loader .bar {
+    background: linear-gradient(90deg, #4361EE, #7C3AED, #EC4899);
+    background-size: 200% 100%;
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+    animation: shimmer 1.5s infinite linear;
+    border-radius: 0 2px 2px 0;
+    box-shadow: 0 0 10px rgba(67, 97, 238, 0.5);
+}
+
+.global-loader.loading .bar {
+    width: 85%;
+}
+
+.global-loader.done .bar {
+    width: 100%;
+    opacity: 0;
+    transition: width 0.2s ease, opacity 0.3s ease 0.2s;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* #7 - Sidebar Colapsable */
+.sidebar {
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.sidebar.collapsed {
+    width: 72px;
+}
+
+.sidebar.collapsed .brand span,
+.sidebar.collapsed .nav-item span,
+.sidebar.collapsed .user-details,
+.sidebar.collapsed .nav-divider::after {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+}
+
+.sidebar.collapsed .brand {
+    justify-content: center;
+    padding: 0;
+}
+
+.sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 0.75rem;
+}
+
+.sidebar.collapsed .nav-item i {
+    font-size: 1.2rem;
+}
+
+.sidebar.collapsed .user-profile {
+    justify-content: center;
+    padding: 1rem 0;
+}
+
+.sidebar.collapsed .user-avatar {
+    margin: 0;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+    position: absolute;
+    top: 50%;
+    right: -12px;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+    color: var(--text-secondary);
+    font-size: 10px;
+}
+
+.sidebar-toggle:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.sidebar.collapsed .sidebar-toggle i {
+    transform: rotate(180deg);
+}
+
+/* #8 - Tooltips */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]::before,
+[data-tooltip]::after {
+    position: absolute;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 1000;
+}
+
+[data-tooltip]::before {
+    content: attr(data-tooltip);
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    padding: 6px 10px;
+    background: #1e293b;
+    color: white;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+[data-tooltip]::after {
+    content: '';
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: #1e293b;
+}
+
+[data-tooltip]:hover::before,
+[data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* #2 - Scroll Animations */
+.animate-on-scroll {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-on-scroll.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Staggered Animation Delays */
+.animate-on-scroll:nth-child(1) {
+    transition-delay: 0.05s;
+}
+
+.animate-on-scroll:nth-child(2) {
+    transition-delay: 0.1s;
+}
+
+.animate-on-scroll:nth-child(3) {
+    transition-delay: 0.15s;
+}
+
+.animate-on-scroll:nth-child(4) {
+    transition-delay: 0.2s;
+}
+
+.animate-on-scroll:nth-child(5) {
+    transition-delay: 0.25s;
+}
+
+.animate-on-scroll:nth-child(6) {
+    transition-delay: 0.3s;
+}
+
+/* #6 - Hover 3D Effect for Cards */
+.card-3d {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+.card-3d:hover {
+    transform: translateY(-4px) rotateX(2deg) rotateY(-2deg);
+    box-shadow:
+        0 20px 40px -15px rgba(0, 0, 0, 0.1),
+        0 10px 20px -10px rgba(67, 97, 238, 0.1);
+}
+
+/* #9 - Enhanced Notifications (Push Style) */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 380px;
+}
+
+.notification {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow:
+        0 10px 40px -10px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    transform: translateX(120%);
+    animation: slideInNotification 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.notification.exiting {
+    animation: slideOutNotification 0.3s ease forwards;
+}
+
+.notification-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.notification-icon.success {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.notification-icon.error {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.notification-icon.info {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.notification-icon.warning {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: #1e293b;
+    margin-bottom: 2px;
+}
+
+.notification-message {
+    font-size: 13px;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.notification-close:hover {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.notification-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: currentColor;
+    border-radius: 0 0 12px 12px;
+    animation: shrinkProgress 4s linear forwards;
+}
+
+@keyframes slideInNotification {
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOutNotification {
+    to {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+}
+
+@keyframes shrinkProgress {
+    from {
+        width: 100%;
+    }
+
+    to {
+        width: 0%;
+    }
+}
+
+/* #11 - Animated Gradients for Modal Headers */
+.modal-header {
+    background: linear-gradient(135deg, #4361EE 0%, #7C3AED 50%, #EC4899 100%);
+    background-size: 200% 200%;
+    animation: gradientShift 8s ease infinite;
+    color: white !important;
+    border-radius: 24px 24px 0 0;
+}
+
+.modal-header .modal-title {
+    color: white;
+}
+
+.modal-header .close-btn {
+    color: white;
+    opacity: 0.8;
+}
+
+.modal-header .close-btn:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* #5 - Empty States with SVG Illustrations */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.empty-state-icon {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 24px;
+    opacity: 0.6;
+}
+
+.empty-state-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 8px;
+}
+
+.empty-state-description {
+    font-size: 0.9rem;
+    color: #64748b;
+    max-width: 320px;
+    line-height: 1.5;
+}
+
+.empty-state-action {
+    margin-top: 20px;
+}
+
+/* #43 - Responsive Design */
+@media (max-width: 1024px) {
+    .sidebar {
+        position: fixed;
+        left: -240px;
+        height: 100vh;
+        z-index: 1000;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .sidebar.mobile-open {
+        left: 0;
+    }
+
+    .sidebar.collapsed {
+        width: 240px;
+        left: -240px;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+        width: 100%;
+    }
+
+    .mobile-menu-btn {
+        display: flex !important;
+    }
+
+    .mobile-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+
+    .mobile-overlay.active {
+        display: block;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .filter-card {
+        flex-direction: column;
+    }
+
+    .filter-group {
+        width: 100%;
+    }
+
+    .stat-cards-grid,
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .modal-content {
+        width: 95% !important;
+        max-width: none !important;
+        margin: 10px;
+        max-height: calc(100vh - 20px);
+    }
+
+    .gantt-scroll-container {
+        max-height: 60vh;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .stat-cards-grid,
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .page-title {
+        font-size: 1.25rem;
+    }
+
+    .btn {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+
+    .nav-item {
+        font-size: 0.9rem;
+        padding: 0.6rem 0.8rem;
+    }
+}
+
+/* Mobile Menu Button */
+.mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 1001;
+    width: 44px;
+    height: 44px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    color: var(--text-primary);
+    font-size: 1.2rem;
+}
+
+/* #12 - Skeleton Loaders for Calendar and Users */
+.skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: skeletonPulse 1.5s ease-in-out infinite;
+    border-radius: 8px;
+}
+
+@keyframes skeletonPulse {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.skeleton-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid #f1f5f9;
+}
+
+.skeleton-line {
+    height: 12px;
+    margin-bottom: 8px;
+}
+
+.skeleton-line.short {
+    width: 40%;
+}
+
+.skeleton-line.medium {
+    width: 70%;
+}
+
+.skeleton-line.long {
+    width: 100%;
+}
+
+.skeleton-circle {
+    border-radius: 50%;
+}
+
+/* #17 - Progress Ring */
+.progress-ring {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.progress-ring svg {
+    transform: rotate(-90deg);
+}
+
+.progress-ring-circle-bg {
+    fill: none;
+    stroke: #f1f5f9;
+}
+
+.progress-ring-circle {
+    fill: none;
+    stroke: url(#progressGradient);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s ease;
+}
+
+.progress-ring-text {
+    position: absolute;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+.progress-ring-text small {
+    font-size: 0.6em;
+    font-weight: 600;
+    color: #64748b;
+}
+
+/* #13 - Sparklines Container */
+.sparkline-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 30px;
+}
+
+.sparkline-bar {
+    width: 4px;
+    background: linear-gradient(to top, var(--primary-color), #7C3AED);
+    border-radius: 2px;
+    transition: height 0.3s ease;
+}
+
+/* #19 - Deadline Alerts */
+.deadline-alert {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border: 1px solid #fecaca;
+    border-left: 4px solid #dc2626;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    animation: pulseAlert 2s ease-in-out infinite;
+}
+
+.deadline-alert-icon {
+    width: 48px;
+    height: 48px;
+    background: #fee2e2;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #dc2626;
+    font-size: 1.5rem;
+}
+
+.deadline-alert-content {
+    flex: 1;
+}
+
+.deadline-alert-title {
+    font-weight: 700;
+    color: #991b1b;
+    font-size: 0.95rem;
+}
+
+.deadline-alert-count {
+    background: #dc2626;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+@keyframes pulseAlert {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+    }
+}
+
+/* #14, #15, #16 - Chart Containers */
+.chart-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #f1f5f9;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.chart-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #1e293b;
+}
+
+.chart-period-toggle {
+    display: flex;
+    gap: 4px;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.chart-period-btn {
+    padding: 6px 12px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.chart-period-btn.active {
+    background: white;
+    color: #1e293b;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* #21 - Calendar Weekly View */
+.calendar-week-grid {
+    display: grid;
+    grid-template-columns: 80px repeat(7, 1fr);
+    gap: 1px;
+    background: #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.calendar-week-header {
+    background: #f8fafc;
+    padding: 12px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.calendar-week-day {
+    background: white;
+    min-height: 100px;
+    padding: 8px;
+    position: relative;
+}
+
+.calendar-week-day.today {
+    background: #eff6ff;
+}
+
+.calendar-week-time {
+    background: #f8fafc;
+    padding: 8px;
+    font-size: 0.75rem;
+    color: #64748b;
+    text-align: right;
+}
+
+/* #23, #24, #25, #26 - Gantt Enhancements */
+.gantt-zoom-controls {
+    display: flex;
+    gap: 4px;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.gantt-zoom-btn {
+    padding: 6px 12px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.gantt-zoom-btn.active {
+    background: white;
+    color: var(--primary-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* #24 - Dependency Lines */
+.gantt-dependency-line {
+    position: absolute;
+    stroke: #94a3b8;
+    stroke-width: 2;
+    fill: none;
+    pointer-events: none;
+}
+
+.gantt-dependency-arrow {
+    fill: #94a3b8;
+}
+
+/* #25 - Milestone Markers */
+.gantt-milestone {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    transform: rotate(45deg);
+    border-radius: 3px;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+    z-index: 5;
+}
+
+.gantt-milestone::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    background: white;
+    border-radius: 1px;
+}
+
+/* #26 - Gantt Minimap */
+.gantt-minimap {
+    height: 60px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    margin-top: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.gantt-minimap-viewport {
+    position: absolute;
+    height: 100%;
+    background: rgba(67, 97, 238, 0.15);
+    border: 2px solid var(--primary-color);
+    border-radius: 4px;
+    cursor: grab;
+}
+
+.gantt-minimap-bar {
+    position: absolute;
+    height: 8px;
+    border-radius: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+}

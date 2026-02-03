@@ -142,3 +142,23 @@ SELECT cron.schedule(
     '0 0 * * *', -- cada hora (puedes cambiarlo)
     $$SELECT actualizar_plan_maestro_por_fecha();$$
 );
+
+
+CREATE OR REPLACE FUNCTION procesar_descripciones_cortas()
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    filas_actualizadas INTEGER;
+BEGIN
+    UPDATE repositorio_documentos
+    SET estado_procesamiento = 'Procesado',
+        updated_at = CURRENT_TIMESTAMP
+    WHERE estado_procesamiento = 'Pendiente'
+      AND descripcion IS NOT NULL
+      AND length(descripcion) > 100;
+
+    GET DIAGNOSTICS filas_actualizadas = ROW_COUNT;
+    RETURN filas_actualizadas;
+END;
+$$;

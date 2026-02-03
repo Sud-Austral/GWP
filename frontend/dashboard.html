@@ -4,7 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4361EE">
     <title>GWP - Dashboard</title>
+    <!-- #3 Favicon -->
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234361EE'/><text y='.9em' x='50%' text-anchor='middle' font-size='70' fill='white'>G</text></svg>">
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -18,7 +22,8 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- CSS -->
-    <link rel="stylesheet" href="css/style.css?v=2.0">
+    <link rel="stylesheet" href="css/style.css?v=2.1">
+    <link rel="stylesheet" href="css/enhancements.css?v=1.0">
     <style>
         /* Scoped Preflight for ALL View Sections to make Tailwind utilities work as expected */
         .view-section *,
@@ -85,6 +90,9 @@
 
         <!-- Main Content Area -->
         <main class="main-content">
+            <!-- Global Breadcrumbs -->
+            <div id="breadcrumbs-container"
+                class="flex items-center gap-2 text-xs mb-6 px-1 hidden animate-fade-in-down"></div>
 
             <!-- VIEW: Dashboard -->
             <section id="view-dashboard" class="view-section">
@@ -93,12 +101,15 @@
                         <h1 class="page-title">Panel de Control</h1>
                         <p class="text-slate-400 text-sm mt-1">Resumen ejecutivo del estado del proyecto.</p>
                     </div>
-                    <button class="btn btn-outline" onclick="StatsModule.init()">
+                    <button class="btn btn-outline" onclick="StatsModule.init()" data-tooltip="Actualizar datos">
                         <i class="fas fa-sync-alt"></i> Actualizar
                     </button>
                 </header>
 
-                <!-- KPIs -->
+                <!-- #19 Deadline Alert -->
+                <div id="deadlineAlertContainer"></div>
+
+                <!-- ORIGINAL KPIs (4 columns) -->
                 <div class="grid grid-cols-4 gap-6 mb-8">
                     <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
                         <div
@@ -142,6 +153,7 @@
                     </div>
                 </div>
 
+                <!-- ORIGINAL Charts Row -->
                 <div class="grid grid-cols-3 gap-6 mb-8">
                     <!-- Chart 1: Status -->
                     <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm col-span-1">
@@ -160,13 +172,145 @@
                     </div>
                 </div>
 
-                <!-- Upcoming List -->
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <header class="px-6 py-4 border-b border-slate-50 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-700">Próximos Vencimientos (30 días)</h3>
-                    </header>
-                    <div id="statsUpcoming" class="p-0">
-                        <!-- List -->
+                <!-- ORIGINAL Bottom Grid: Upcoming & Recent -->
+                <div class="grid grid-cols-3 gap-6 mb-8">
+                    <!-- Upcoming Deadlines (2/3) -->
+                    <div class="col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <header
+                            class="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                            <h3 class="font-bold text-slate-700">Próximos Vencimientos (30 días)</h3>
+                            <a href="#" onclick="App.navigate('calendar')"
+                                class="text-xs font-semibold text-blue-600 hover:text-blue-700">Ver Calendario
+                                &rarr;</a>
+                        </header>
+                        <div id="statsUpcoming">
+                            <div class="p-8 text-center text-slate-300">
+                                <i class="fas fa-circle-notch fa-spin text-2xl mb-2"></i>
+                                <p>Checking dates...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Actions (1/3) -->
+                    <div class="col-span-1 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <header
+                            class="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                            <h3 class="font-bold text-slate-700">Últimos Movimientos</h3>
+                        </header>
+                        <div id="statsRecent">
+                            <div class="p-8 text-center text-slate-300">
+                                <i class="fas fa-circle-notch fa-spin text-2xl mb-2"></i>
+                                <p>Cargando...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- NUEVAS VISUALIZACIONES AVANZADAS -->
+                <!-- ============================================================ -->
+                <div class="border-t border-slate-200 pt-8 mt-8">
+                    <h2 class="text-lg font-bold text-slate-700 mb-6 flex items-center gap-2">
+                        <i class="fas fa-chart-line text-primary-color"></i> Análisis Avanzado
+                    </h2>
+
+                    <!-- Progress Ring + Advanced KPIs -->
+                    <div class="grid grid-cols-4 gap-6 mb-8">
+                        <!-- #17 Progress Ring -->
+                        <div
+                            class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center card-3d">
+                            <div id="progressRingContainer"></div>
+                            <div class="text-xs text-slate-400 font-medium uppercase tracking-wider mt-2">Avance Global
+                            </div>
+                        </div>
+
+                        <!-- KPI with Sparkline: Actividades -->
+                        <div
+                            class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 card-3d">
+                            <div
+                                class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 text-xl">
+                                <i class="fas fa-chart-bar"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="text-lg font-bold text-slate-800">Tendencia</div>
+                                <div class="text-xs text-slate-400 mb-2">Actividades (8 sem)</div>
+                                <div id="sparklineTotal"></div>
+                            </div>
+                        </div>
+
+                        <!-- KPI with Sparkline: Completadas -->
+                        <div
+                            class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 card-3d">
+                            <div
+                                class="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center text-green-600 text-xl">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="text-lg font-bold text-slate-800">Tendencia</div>
+                                <div class="text-xs text-slate-400 mb-2">Completadas (8 sem)</div>
+                                <div id="sparklineDone"></div>
+                            </div>
+                        </div>
+
+                        <!-- KPI with Sparkline: En Progreso -->
+                        <div
+                            class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 card-3d">
+                            <div
+                                class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 text-xl">
+                                <i class="fas fa-wave-square"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="text-lg font-bold text-slate-800">Tendencia</div>
+                                <div class="text-xs text-slate-400 mb-2">En Progreso (8 sem)</div>
+                                <div id="sparklineProgress"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Charts Row 1 -->
+                    <div class="grid grid-cols-3 gap-6 mb-8">
+                        <!-- #14 Burndown Chart -->
+                        <div class="chart-card col-span-2 card-3d">
+                            <div class="chart-header">
+                                <h3 class="chart-title">Burndown del Proyecto</h3>
+                                <div class="chart-period-toggle">
+                                    <button class="chart-period-btn active" data-period="month">Mes</button>
+                                    <button class="chart-period-btn" data-period="quarter">Trimestre</button>
+                                    <button class="chart-period-btn" data-period="all">Todo</button>
+                                </div>
+                            </div>
+                            <div style="height:250px; position:relative;">
+                                <canvas id="chartBurndown"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- #16 Activity Heatmap -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm col-span-1 card-3d">
+                            <h3 class="font-bold text-slate-700 mb-4">Actividad por Día</h3>
+                            <div id="activityHeatmap"></div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Charts Row 2 -->
+                    <div class="grid grid-cols-3 gap-6">
+                        <!-- #15 Monthly Comparison -->
+                        <div class="chart-card col-span-2 card-3d">
+                            <div class="chart-header">
+                                <h3 class="chart-title">Comparativa Mensual</h3>
+                            </div>
+                            <div style="height:220px; position:relative;">
+                                <canvas id="chartComparison"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Additional Stats Card -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm col-span-1 card-3d">
+                            <h3 class="font-bold text-slate-700 mb-4">Resumen Hitos</h3>
+                            <div id="sparklineHitos" class="mb-4"></div>
+                            <div class="text-sm text-slate-500">
+                                <p>Tendencia de hitos registrados en las últimas 8 semanas.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -229,6 +373,8 @@
                         </button>
                     </div>
                 </div>
+                <!-- Active Chips -->
+                <div id="planActiveChips" class="flex flex-wrap gap-2 mt-4 hidden w-full"></div>
 
                 <div id="activeFilters" class="mb-4 flex gap-2 empty:hidden"></div>
 
@@ -262,30 +408,94 @@
 
                 <div
                     class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-wrap gap-4 items-end">
-                    <div class="filter-group w-full md:w-auto md:flex-grow min-w-[200px]">
+
+                    <div class="filter-group search-group w-full md:w-auto md:flex-grow min-w-[240px]">
+                        <label
+                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Buscar
+                            Actividad</label>
+                        <input type="text" id="ganttSearch" placeholder="Nombre, código..." class="form-input w-full">
+                    </div>
+
+                    <div class="filter-group w-full md:w-auto min-w-[180px]">
                         <label
                             class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Producto</label>
                         <select id="ganttFilterProduct" class="form-select w-full">
                             <option value="">Todos</option>
                         </select>
                     </div>
-                    <div class="filter-group w-full md:w-auto min-w-[200px]">
+                    <div class="filter-group w-full md:w-auto min-w-[180px]">
                         <label
                             class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Responsable</label>
                         <select id="ganttFilterResp" class="form-select w-full">
                             <option value="">Todos</option>
                         </select>
                     </div>
+
+                    <div class="filter-group w-full md:w-auto min-w-[180px]">
+                        <label
+                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Estado</label>
+                        <select id="ganttFilterStatus" class="form-select w-full">
+                            <option value="">Todos</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Progreso">En Progreso</option>
+                            <option value="Completado">Completado</option>
+                        </select>
+                    </div>
+
                     <div class="filter-group action-group">
                         <button class="btn btn-outline text-slate-500 hover:text-red-500 border-slate-200"
                             onclick="GanttModule.clearFilters()">
                             <i class="fas fa-eraser"></i>
                         </button>
                     </div>
+                    <!-- Active Chips -->
+                    <div id="ganttActiveChips" class="flex flex-wrap gap-2 mt-4 hidden w-full"></div>
                 </div>
+
+                <!-- #23 Gantt Zoom Controls -->
+                <div
+                    class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-4 flex justify-between items-center">
+                    <div class="flex items-center gap-4">
+                        <span class="text-sm font-bold text-slate-600">Escala:</span>
+                        <div id="ganttZoomControls" class="gantt-zoom-controls">
+                            <button class="gantt-zoom-btn" data-zoom="day">Día</button>
+                            <button class="gantt-zoom-btn" data-zoom="week">Semana</button>
+                            <button class="gantt-zoom-btn active" data-zoom="month">Mes</button>
+                            <button class="gantt-zoom-btn" data-zoom="quarter">Trimestre</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-400" id="ganttInfo"></span>
+                        <button class="btn btn-sm btn-secondary" onclick="GanttModule.scrollToToday()"
+                            data-tooltip="Ir a hoy">
+                            <i class="far fa-calendar-check"></i> Hoy
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Gantt Chart -->
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 overflow-hidden" id="ganttChart">
                     <!-- Gantt render area -->
                     <div class="text-center p-4">Cargando visualización...</div>
+                </div>
+
+                <!-- #26 Gantt Minimap -->
+                <div id="ganttMinimapContainer" class="mt-4"></div>
+
+                <!-- #25 Milestones Legend -->
+                <div class="mt-4 flex items-center gap-6 text-xs text-slate-500">
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 rounded bg-green-500"></span> Completado
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 rounded bg-blue-500"></span> En Progreso
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 rounded bg-red-500"></span> Pendiente
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 bg-amber-500 rotate-45"></span> Hito
+                    </div>
                 </div>
             </section>
 
@@ -294,13 +504,22 @@
                 <header class="page-header">
                     <h1 class="page-title">Calendario de Hitos</h1>
                     <div class="flex gap-2">
-                        <button class="btn btn-sm btn-primary" id="btnCalMonth"
-                            onclick="CalendarModule.render('month')">
+                        <button class="btn btn-sm btn-primary" id="btnCalMonth" onclick="CalendarModule.render('month')"
+                            data-tooltip="Vista mensual">
                             <i class="far fa-calendar-alt"></i> Mensual
                         </button>
+                        <!-- #21 Weekly View -->
+                        <button class="btn btn-sm btn-secondary" id="btnCalWeek" onclick="CalendarModule.render('week')"
+                            data-tooltip="Vista semanal">
+                            <i class="fas fa-calendar-week"></i> Semanal
+                        </button>
                         <button class="btn btn-sm btn-secondary" id="btnCalAgenda"
-                            onclick="CalendarModule.render('agenda')">
-                            <i class="fas fa-list-ul"></i> Agenda Diaria
+                            onclick="CalendarModule.render('agenda')" data-tooltip="Lista de eventos">
+                            <i class="fas fa-list-ul"></i> Agenda
+                        </button>
+                        <button class="btn btn-sm btn-secondary" id="btnCalHistory"
+                            onclick="CalendarModule.toggleHistory()">
+                            <i class="fas fa-history"></i> Histórico
                         </button>
                     </div>
                 </header>
@@ -312,23 +531,36 @@
             <!-- VIEW: Hitos -->
             <section id="view-hitos" class="view-section" style="display:none;">
                 <header class="page-header">
-                    <h1 class="page-title">Gestión de Hitos</h1>
+                    <h1 class="page-title">Hitos e Inspectores</h1>
                     <button class="btn btn-primary" id="btnNewHitoGlobal">
                         <i class="fas fa-plus"></i> Nuevo Hito
                     </button>
                 </header>
 
-                <!-- Filter Card Hitos -->
                 <div
                     class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-wrap gap-4 items-end">
-                    <div class="filter-group w-full md:w-auto md:flex-grow min-w-[200px]">
+                    <div class="filter-group search-group w-full md:w-auto md:flex-grow min-w-[240px]">
+                        <label
+                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Buscar
+                            Hito</label>
+                        <input type="text" id="hitoSearch" placeholder="Nombre, actividad..." class="form-input w-full">
+                    </div>
+
+                    <div class="filter-group w-full md:w-auto min-w-[180px]">
                         <label
                             class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Producto</label>
                         <select id="hitoFilterProduct" class="form-select w-full">
                             <option value="">Todos</option>
                         </select>
                     </div>
-                    <div class="filter-group w-full md:w-auto min-w-[200px]">
+                    <div class="filter-group w-full md:w-auto min-w-[180px]">
+                        <label
+                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Responsable</label>
+                        <select id="hitoFilterResp" class="form-select w-full">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group w-full md:w-auto min-w-[180px]">
                         <label
                             class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Estado</label>
                         <select id="hitoFilterStatus" class="form-select w-full">
@@ -343,6 +575,8 @@
                             <i class="fas fa-eraser"></i>
                         </button>
                     </div>
+                    <!-- Active Chips -->
+                    <div id="hitosActiveChips" class="flex flex-wrap gap-2 mt-4 hidden w-full"></div>
                 </div>
 
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -380,8 +614,43 @@
                         <label
                             class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Buscar
                             comentario</label>
-                        <input type="text" placeholder="Buscar..." class="form-input w-full">
+                        <input type="text" id="obsSearch" placeholder="Texto, usuario..." class="form-input w-full">
                     </div>
+                    <div class="filter-group w-full md:w-auto min-w-[180px]">
+                        <label
+                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Producto</label>
+                        <select id="obsFilterProduct" class="form-select w-full">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group w-full md:w-auto min-w-[180px]">
+                        <label
+                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Responsable</label>
+                        <select id="obsFilterResp" class="form-select w-full">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group w-full md:w-auto min-w-[180px]">
+                        <label
+                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Estado
+                            Actividad</label>
+                        <select id="obsFilterStatus" class="form-select w-full">
+                            <option value="">Todos</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Progreso">En Progreso</option>
+                            <option value="Completado">Completado</option>
+                        </select>
+                    </div>
+                    <div class="filter-group action-group">
+                        <button class="btn btn-outline text-slate-500 hover:text-red-500 border-slate-200"
+                            onclick="Utils.clearFilters()">
+                            <i class="fas fa-eraser"></i>
+                        </button>
+                    </div>
+
+
+                    <!-- Active Chips -->
+                    <div id="obsActiveChips" class="flex flex-wrap gap-2 mt-4 hidden w-full"></div>
                 </div>
 
                 <!-- Feed Grid -->
@@ -402,27 +671,48 @@
                 <!-- Filter Card Docs -->
                 <div
                     class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-wrap gap-4 items-end">
-                    <div class="filter-group w-full md:w-auto md:flex-grow min-w-[200px]">
+                    <div class="filter-group search-group w-full md:w-auto md:flex-grow min-w-[240px]">
+                        <label
+                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Buscar
+                            Documento</label>
+                        <input type="text" id="docSearch" placeholder="Nombre archivo, actividad..."
+                            class="form-input w-full">
+                    </div>
+
+                    <div class="filter-group w-full md:w-auto min-w-[180px]">
                         <label
                             class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Producto</label>
                         <select id="docFilterProduct" class="form-select w-full">
                             <option value="">Todos</option>
                         </select>
                     </div>
-                    <div class="filter-group w-full md:w-auto min-w-[200px]">
+                    <div class="filter-group w-full md:w-auto min-w-[180px]">
                         <label
-                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Subido
-                            Por</label>
+                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Responsable</label>
                         <select id="docFilterResp" class="form-select w-full">
                             <option value="">Todos</option>
                         </select>
                     </div>
+                    <div class="filter-group w-full md:w-auto min-w-[180px]">
+                        <label
+                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Estado
+                            Actividad</label>
+                        <select id="docFilterStatus" class="form-select w-full">
+                            <option value="">Todos</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Progreso">En Progreso</option>
+                            <option value="Completado">Completado</option>
+                        </select>
+                    </div>
+
                     <div class="filter-group action-group">
                         <button class="btn btn-outline text-slate-500 hover:text-red-500 border-slate-200"
                             onclick="Utils.clearFilters()">
                             <i class="fas fa-eraser"></i>
                         </button>
                     </div>
+                    <!-- Active Chips -->
+                    <div id="docsActiveChips" class="flex flex-wrap gap-2 mt-4 hidden w-full"></div>
                 </div>
 
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -454,26 +744,103 @@
                     </button>
                 </header>
 
-                <div
-                    class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-wrap gap-4 items-end">
-                    <div class="filter-group search-group w-full md:w-auto md:flex-grow min-w-[240px]">
-                        <label
-                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Buscar
-                            en biblioteca</label>
-                        <input type="text" id="searchRepo" placeholder="Título, etiquetas, contenido..."
-                            class="form-input w-full">
+                <!-- Enhanced Filter Section -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8">
+                    <!-- Row 1: Primary Search -->
+                    <div class="relative mb-6">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-slate-400 text-lg"></i>
+                        </div>
+                        <input type="text" id="repoSearch"
+                            class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm font-medium placeholder-slate-400"
+                            placeholder="Buscar en la biblioteca estratégica (Título, contenido, etiquetas, puntos clave)...">
                     </div>
-                    <div class="filter-group w-full md:w-auto min-w-[200px]">
-                        <label
-                            class="filter-label block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Tipo</label>
-                        <select id="repoFilterType" class="form-select w-full">
-                            <option value="">Todos</option>
-                            <option value="Ley">Leyes</option>
-                            <option value="Decreto">Decretos</option>
-                            <option value="Informe Técnico">Informes Técnicos</option>
-                            <option value="Acta">Actas</option>
-                        </select>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                        <!-- Type -->
+                        <div class="group">
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Tipo
+                                Doc.</label>
+                            <select id="repoFilterType"
+                                class="form-select w-full text-xs py-2 h-10 bg-white border-slate-200 rounded-lg focus:border-blue-500">
+                                <option value="">Todos</option>
+                                <option value="Ley">Ley</option>
+                                <option value="Decreto">Decreto</option>
+                                <option value="Informe Técnico">Informe Técnico</option>
+                                <option value="Acta">Acta</option>
+                                <option value="Manual">Manual</option>
+                                <option value="Paper">Paper</option>
+                            </select>
+                        </div>
+
+                        <!-- Source Type -->
+                        <div class="group">
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Tipo
+                                Fuente</label>
+                            <select id="repoFilterSourceType"
+                                class="form-select w-full text-xs py-2 h-10 bg-white border-slate-200 rounded-lg focus:border-blue-500">
+                                <option value="">Todos</option>
+                                <option value="Gobierno">Gobierno</option>
+                                <option value="Academia">Academia</option>
+                                <option value="ONG">ONG</option>
+                                <option value="Privado">Privado</option>
+                                <option value="Internacional">Internacional</option>
+                            </select>
+                        </div>
+
+                        <!-- Origin -->
+                        <div class="group">
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Institución</label>
+                            <input type="text" id="repoFilterOrigin" placeholder="Ej: CONAF..."
+                                class="form-input w-full text-xs py-2 h-10 bg-white border-slate-200 rounded-lg focus:border-blue-500">
+                        </div>
+
+                        <!-- Tags -->
+                        <div class="group">
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Etiquetas</label>
+                            <select id="repoFilterTags"
+                                class="form-select w-full text-xs py-2 h-10 bg-white border-slate-200 rounded-lg focus:border-blue-500">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+
+                        <!-- Year -->
+                        <div class="group">
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Año</label>
+                            <input type="number" id="repoFilterYear" placeholder="YYYY" min="1900" max="2100"
+                                class="form-input w-full text-xs py-2 h-10 bg-white border-slate-200 rounded-lg focus:border-blue-500">
+                        </div>
+
+                        <!-- Status -->
+                        <div class="group">
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Estado</label>
+                            <select id="repoFilterProcStatus"
+                                class="form-select w-full text-xs py-2 h-10 bg-white border-slate-200 rounded-lg focus:border-blue-500">
+                                <option value="">Todos</option>
+                                <option value="Pendiente">Pendiente</option>
+                                <option value="Resumido">Resumido</option>
+                                <option value="Indexado">Indexado</option>
+                            </select>
+                        </div>
+
+                        <!-- Clear -->
+                        <div class="flex items-end">
+                            <button
+                                class="w-full h-10 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg transition-colors text-xs font-bold uppercase tracking-wide"
+                                onclick="RepoModule.clearFilters()">
+                                <i class="fas fa-undo"></i> Limpiar
+                            </button>
+                        </div>
                     </div>
+
+                    <!-- Active Chips -->
+                    <div id="repoActiveChips" class="flex flex-wrap gap-2 mt-4 hidden"></div>
                 </div>
 
                 <!-- Cards Grid -->
@@ -896,17 +1263,18 @@
         </div>
     </div>
 
-    <script src="js/utils.js?v=2.0"></script>
-    <script src="js/modules/plan.js?v=2.0"></script>
-    <script src="js/modules/stats.js?v=2.0"></script>
-    <script src="js/modules/users.js?v=2.0"></script>
-    <script src="js/modules/gantt.js?v=2.0"></script>
-    <script src="js/modules/calendar.js?v=2.0"></script>
-    <script src="js/modules/hitos.js?v=2.0"></script>
-    <script src="js/modules/observaciones.js?v=2.0"></script>
-    <script src="js/modules/documents.js?v=2.0"></script>
-    <script src="js/modules/repo.js?v=2.0"></script>
-    <script src="js/app.js?v=2.0"></script>
+    <script src="js/utils.js?v=2.1"></script>
+    <script src="js/enhancements.js?v=1.0"></script>
+    <script src="js/modules/plan.js?v=2.1"></script>
+    <script src="js/modules/stats.js?v=2.1"></script>
+    <script src="js/modules/users.js?v=2.1"></script>
+    <script src="js/modules/gantt.js?v=2.1"></script>
+    <script src="js/modules/calendar.js?v=2.1"></script>
+    <script src="js/modules/hitos.js?v=2.1"></script>
+    <script src="js/modules/observaciones.js?v=2.1"></script>
+    <script src="js/modules/documents.js?v=2.1"></script>
+    <script src="js/modules/repo.js?v=2.1"></script>
+    <script src="js/app.js?v=2.1"></script>
 </body>
 
 </html>

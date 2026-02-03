@@ -100,7 +100,7 @@ const Utils = {
     // --- CASCADING FILTERS LOGIC ---
     // config = { data: [], filters: [ {id, key}, {id, key} ], onFilter: (filteredData) => {} }
     setupCascadingFilters: (config) => {
-        const { data, filters, onFilter } = config;
+        const { data, filters, search, onFilter, chipsContainerId } = config;
 
         const applyParams = () => {
             // 1. Get current values
@@ -110,20 +110,31 @@ const Utils = {
                 if (el) activeValues[f.id] = el.value;
             });
 
-            // 2. Filter Main Data (Intersection of all active filters)
+            // Get Search Value
+            let searchTerm = '';
+            if (search && search.id) {
+                const el = document.getElementById(search.id);
+                if (el) searchTerm = el.value.toLowerCase();
+            }
+
+            // 2. Filter Main Data (Intersection of all active filters + Search)
             const filteredData = data.filter(item => {
+                // Check Search
+                if (searchTerm && search.keys) {
+                    const matchesSearch = search.keys.some(k => {
+                        const val = (item[k] || '').toString().toLowerCase();
+                        return val.includes(searchTerm);
+                    });
+                    if (!matchesSearch) return false;
+                }
+
+                // Check Dropdowns
                 return filters.every(f => {
                     const val = activeValues[f.id];
                     if (!val) return true; // No filter active for this field
 
-                    // Specific logic for product/resp strings
                     const itemVal = (item[f.key] || '').toString().toLowerCase();
                     const filterVal = val.toLowerCase();
-
-                    // Loose matching for codes/names, exact for status usually
-                    // But if select options are exact values from data, exact match is safer.
-                    // However, we populated selects with exact values.
-                    // Let's try exact match first, if item is string and includes.
                     return itemVal.includes(filterVal);
                 });
             });
@@ -131,8 +142,16 @@ const Utils = {
             // 3. Update Options for EACH filter based on others
             filters.forEach(targetF => {
                 // To find available options for targetF, we filter by ALL OTHERS except targetF
-                // This allows the user to see other available options in this category given the other constraints
                 const contextData = data.filter(item => {
+                    // Check Search first
+                    if (searchTerm && search.keys) {
+                        const matchesSearch = search.keys.some(k => {
+                            const val = (item[k] || '').toString().toLowerCase();
+                            return val.includes(searchTerm);
+                        });
+                        if (!matchesSearch) return false;
+                    }
+
                     return filters.every(otherF => {
                         if (otherF.id === targetF.id) return true; // Ignore self
                         const val = activeValues[otherF.id];
@@ -151,14 +170,21 @@ const Utils = {
                 const el = document.getElementById(targetF.id);
                 if (el) {
                     const currentVal = activeValues[targetF.id];
-                    // We need label logic... defaulting to 'Todos' based on placeholder logic or custom map
                     // Simple hack: read the first option text of current select usually "Producto: Todos"
-                    const defaultLabel = el.options[0]?.text || 'Todos';
-                    Utils.populateSelect(targetF.id, options, defaultLabel, currentVal);
+                    // If element is select
+                    if (el.tagName === 'SELECT') {
+                        const defaultLabel = el.options[0]?.text || 'Todos';
+                        Utils.populateSelect(targetF.id, options, defaultLabel, currentVal);
+                    }
                 }
             });
 
-            // 4. Trigger Callback with final filtered data
+            // 4. Update Chips
+            if (chipsContainerId) {
+                Utils.updateActiveTags(chipsContainerId, filters, activeValues, applyParams);
+            }
+
+            // 5. Trigger Callback with final filtered data
             if (onFilter) onFilter(filteredData);
         };
 
@@ -169,15 +195,18 @@ const Utils = {
                 // Remove old listeners to avoid stacking
                 const newEl = el.cloneNode(true);
                 el.parentNode.replaceChild(newEl, el);
-
                 newEl.addEventListener('change', applyParams);
-
-                // If it's a text input search, use keyup
-                if (newEl.tagName === 'INPUT') {
-                    newEl.addEventListener('keyup', applyParams);
-                }
             }
         });
+
+        if (search && search.id) {
+            const el = document.getElementById(search.id);
+            if (el) {
+                const newEl = el.cloneNode(true);
+                el.parentNode.replaceChild(newEl, el);
+                newEl.addEventListener('input', applyParams);
+            }
+        }
 
         // Initial Run
         applyParams();
@@ -253,6 +282,121 @@ const Utils = {
                 }
             });
         });
+    },
+
+    showToast: (message, type = 'success') => {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'fixed bottom-6 right-6 z-[9999] flex flex-col gap-3';
+            document.body.appendChild(container);
+        }
+
+        const toast = document.createElement('div');
+        const colors = type === 'success' ? 'bg-emerald-500' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
+        const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
+
+        toast.className = `${colors} text-white px-6 py-3 rounded-xl shadow-lg shadow-black/10 flex items-center gap-3 transform transition-all duration-300 translate-y-10 opacity-0`;
+        toast.innerHTML = `<i class="fas ${icon} text-lg"></i> <span class="font-medium text-sm">${message}</span>`;
+
+        container.appendChild(toast);
+
+        // Animate In
+        requestAnimationFrame(() => {
+            toast.classList.remove('translate-y-10', 'opacity-0');
+        });
+
+        // Remove
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-y-2');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    },
+
+    renderBreadcrumbs: (crumbs) => {
+        const container = document.getElementById('breadcrumbs-container');
+        if (!container) return;
+
+        const html = crumbs.map((c, i) => {
+            const isLast = i === crumbs.length - 1;
+            const style = isLast ? 'font-bold text-slate-800' : 'text-slate-400 hover:text-blue-500 cursor-pointer transition-colors';
+            // Simple span if last, otherwise button/link logic ideally
+            return `<span class="${style}">${c}</span>`;
+        }).join('<span class="mx-2 text-slate-300">/</span>');
+
+        container.innerHTML = html;
+        container.classList.remove('hidden');
+    },
+
+    clearFilters: () => {
+        const view = window.currentView || 'dashboard';
+        let ids = [];
+
+        if (view === 'repo') {
+            if (window.RepoModule) { RepoModule.clearFilters(); return; }
+        } else if (view === 'plan') {
+            ids = ['searchPlan', 'filterProduct', 'filterResp', 'filterStatus'];
+        } else if (view === 'hitos') {
+            ids = ['hitoSearch', 'hitoFilterProduct', 'hitoFilterResp', 'hitoFilterStatus'];
+        } else if (view === 'observaciones') {
+            ids = ['obsSearch', 'obsFilterProduct', 'obsFilterResp', 'obsFilterStatus'];
+        } else if (view === 'documents') {
+            ids = ['docSearch', 'docFilterProduct', 'docFilterResp', 'docFilterStatus'];
+        } else if (view === 'gantt') {
+            if (window.GanttModule) { GanttModule.clearFilters(); return; }
+        }
+
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = '';
+                el.dispatchEvent(new Event('change'));
+                el.dispatchEvent(new Event('input'));
+            }
+        });
+    },
+
+    updateActiveTags: (containerId, filters, activeValues, refreshCallback) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        let html = '';
+        filters.forEach(f => {
+            const val = activeValues[f.id];
+            if (val) {
+                // Try to get label from select option if available
+                const el = document.getElementById(f.id);
+                let label = val; // Default to value
+                let fieldName = f.id.replace('filter', '').replace('repo', '').replace('Filter', '');
+
+                if (el && el.tagName === 'SELECT') {
+                    // Try to find the option text
+                    for (let i = 0; i < el.options.length; i++) {
+                        if (el.options[i].value === val) {
+                            label = el.options[i].text;
+                            break;
+                        }
+                    }
+                }
+
+                // Add Chip
+                html += `
+                    <div class="inline-flex items-center bg-blue-50 border border-blue-100 text-blue-600 text-[11px] font-bold px-3 py-1 rounded-full gap-2 transition-all hover:bg-blue-100 hover:border-blue-200 shadow-sm animate-fade-in-up">
+                        <span class="opacity-60 uppercase tracking-wider text-[9px]">${fieldName}:</span>
+                        <span>${label}</span>
+                        <button onclick="document.getElementById('${f.id}').value=''; document.getElementById('${f.id}').dispatchEvent(new Event('change'));" 
+                            class="hover:text-red-500 w-4 h-4 flex items-center justify-center rounded-full transition-colors ml-1">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }
+        });
+
+        container.innerHTML = html;
+        if (html) container.classList.remove('hidden');
+        else container.classList.add('hidden');
     }
 };
 
