@@ -8,8 +8,8 @@ const ChatModule = {
     config: {
         API_KEY: "1b0ec96e0b474451833fe01a06f4123d.BkE9SxTzmhtJiJDL",
         API_URL: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-        //MODEL_NAME: "GLM-4.7-FlashX"
-        MODEL_NAME: "GLM-4.7",
+        MODEL_NAME: "GLM-4.7-FlashX",
+        //MODEL_NAME: "GLM-4.7",
         MODEL_NAME1: "GLM-4.7-FlashX",
         MODEL_NAME2: "GLM-4.7",
     },
