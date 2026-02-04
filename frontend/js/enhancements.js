@@ -582,7 +582,7 @@ const Enhancements = {
             };
         }
 
-        console.log('✨ GWP Enhancements loaded');
+
     }
 };
 

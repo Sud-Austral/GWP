@@ -305,7 +305,7 @@ const PlanModule = {
     },
 
     init: async () => {
-        console.log("PlanModule Init");
+
         // Load data
         await PlanModule.loadData();
 

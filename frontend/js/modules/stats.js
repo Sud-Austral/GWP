@@ -19,7 +19,7 @@ const StatsModule = {
         try {
             const hRes = await API.get('/hitos');
             hitosCount = hRes ? hRes.length : 0;
-        } catch (e) { console.log('Error fetching hitos stats'); }
+        } catch (e) { }
 
         StatsModule.renderKPIs(plan, hitosCount);
         StatsModule.renderProgressRing(plan);

@@ -122,11 +122,11 @@ const Router = {
     // Initialize router
     init: () => {
         if (!Router.isReadOnly()) {
-            console.log('✅ Usuario con permisos completos');
+
             return;
         }
 
-        console.log('🔒 Activando modo solo lectura...');
+
 
         // Apply with delays to catch dynamic content
         Router.applyRestrictions();

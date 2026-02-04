@@ -214,7 +214,7 @@ const Utils = {
 
     refreshCurrentView: () => {
         const currentView = document.querySelector('.nav-item.active').dataset.view;
-        console.log("Refreshing view:", currentView);
+
         if (currentView === 'dashboard' && window.StatsModule) StatsModule.init();
         else if (currentView === 'plan' && window.PlanModule) PlanModule.init();
         else if (currentView === 'users' && window.UsersModule) UsersModule.init();

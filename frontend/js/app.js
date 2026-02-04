@@ -38,7 +38,7 @@ const App = {
         const target = document.getElementById(`view-${viewName}`);
         if (target) {
             target.style.display = 'block';
-            console.log(`Navigating to ${viewName}`);
+
 
             // Store current view globally for refresh logic
             window.currentView = viewName;
