@@ -8,7 +8,10 @@ const ChatModule = {
     config: {
         API_KEY: "1b0ec96e0b474451833fe01a06f4123d.BkE9SxTzmhtJiJDL",
         API_URL: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-        MODEL_NAME: "GLM-4.7-FlashX"
+        //MODEL_NAME: "GLM-4.7-FlashX"
+        MODEL_NAME: "GLM-4.7",
+        MODEL_NAME1: "GLM-4.7-FlashX",
+        MODEL_NAME2: "GLM-4.7",
     },
 
     // State
@@ -152,8 +155,10 @@ const ChatModule = {
 
         // Build context from documents
         const docs = ChatModule.getDocuments();
-        const docsSummary = docs.slice(0, 20).map(d => {
-            return `- "${d.titulo}" (${d.tipo_documento || 'Doc'}): ${(d.descripcion || '').substring(0, 200)}`;
+        const docsSummary = docs.slice(0, 100).map(d => {
+            // Use resumen_largo if available, otherwise fall back to descripcion
+            const content = d.resumen_largo || d.descripcion || '';
+            return `- "${d.titulo}" (${d.tipo_documento || 'Doc'}): ${content.substring(0, 500)}`;
         }).join('\n');
 
         const systemPrompt = `Eres un asistente experto en documentos estratégicos de gestión de proyectos.
@@ -175,26 +180,42 @@ Usa EXACTAMENTE este formato, una por línea, asegurándote de cerrar los corche
 
 No añadas texto antes ni después de estas sugerencias. Solo las etiquetas.`;
 
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                "Authorization": `Bearer ${API_KEY}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: MODEL_NAME,
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: prompt }
-                ],
-                temperature: 0.2
-            })
-        });
+        // Make request with retry for rate limiting
+        const makeRequest = async (retryCount = 0) => {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    "Authorization": `Bearer ${API_KEY}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: MODEL_NAME,
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: prompt }
+                    ],
+                    temperature: 0.2
+                })
+            });
 
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
-        }
+            if (response.status === 429) {
+                if (retryCount < 2) {
+                    // Wait and retry (exponential backoff)
+                    const waitTime = (retryCount + 1) * 3000; // 3s, 6s
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                    return makeRequest(retryCount + 1);
+                }
+                throw new Error('El servicio está muy ocupado. Por favor, espera unos segundos e intenta de nuevo.');
+            }
 
+            if (!response.ok) {
+                throw new Error(`Error del servidor: ${response.status}`);
+            }
+
+            return response;
+        };
+
+        const response = await makeRequest();
         const data = await response.json();
         return data.choices?.[0]?.message?.content || 'Sin respuesta';
     },
@@ -206,8 +227,15 @@ No añadas texto antes ni después de estas sugerencias. Solo las etiquetas.`;
         return div.innerHTML;
     },
 
+    // Remove emojis and unsupported Unicode characters that render as squares
+    removeEmojis: (text) => {
+        return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F700}-\u{1F77F}]|[\u{1F780}-\u{1F7FF}]|[\u{1F800}-\u{1F8FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{231A}-\u{231B}]|[\u{23E9}-\u{23F3}]|[\u{23F8}-\u{23FA}]|[\u{25AA}-\u{25AB}]|[\u{25B6}]|[\u{25C0}]|[\u{25FB}-\u{25FE}]|[\u{2934}-\u{2935}]|[\u{2B05}-\u{2B07}]|[\u{2B1B}-\u{2B1C}]|[\u{2B50}]|[\u{2B55}]|[\u{3030}]|[\u{303D}]|[\u{3297}]|[\u{3299}]/gu, '');
+    },
+
     // Format AI response with markdown-like styling & suggestion buttons
     formatResponse: (text) => {
+        // Clean emojis first
+        text = ChatModule.removeEmojis(text);
         // Extract suggestions. Regex handles:
         // - Optional spaces after colon
         // - Capture text until closing bracket OR end of line (if bracket missing)

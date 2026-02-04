@@ -113,6 +113,9 @@ const RepoModule = {
     },
 
     setupFilters: () => {
+        if (RepoModule._filtersSetup) return;
+        RepoModule._filtersSetup = true;
+
         const inputs = [
             'repoSearch', 'repoFilterType', 'repoFilterSourceType',
             'repoFilterOrigin', 'repoFilterYear', 'repoFilterTags'

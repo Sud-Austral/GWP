@@ -34,6 +34,44 @@
             border-style: solid;
             border-color: #e5e7eb;
         }
+
+        /* Fix for chat panel - hide any unwanted overflow/resize indicators */
+        #repoChatPanel {
+            resize: none !important;
+        }
+
+        #repoChatPanel::-webkit-scrollbar,
+        #repoChatPanel *::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        #repoChatPanel::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+
+        #repoChatPanel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        /* Hide any resize handle */
+        #repoChatPanel::-webkit-resizer {
+            display: none !important;
+        }
+
+        /* Hide any potential checkbox, label or marker elements in chat header */
+        #repoChatPanel>div:first-child {
+            position: relative;
+        }
+
+        #repoChatPanel>div:first-child::before,
+        #repoChatPanel>div:first-child::after,
+        #repoChatPanel>div:first-child *::before,
+        #repoChatPanel>div:first-child *::after {
+            content: none !important;
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -888,7 +926,8 @@
                                 <div class="text-xs text-white/70">Biblioteca Estratégica</div>
                             </div>
                         </div>
-                        <button onclick="RepoModule.toggleChat()" class="text-white/70 hover:text-white">
+                        <button onclick="RepoModule.toggleChat()" class="text-white/70 hover:text-white p-2"
+                            style="line-height: 1; background: none; border: none;">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -1349,6 +1388,7 @@
     <script src="js/modules/documents.js?v=2.1"></script>
     <script src="js/modules/chat.js?v=2.2"></script>
     <script src="js/modules/repo.js?v=2.1"></script>
+    <script src="js/router.js?v=1.0"></script>
     <script src="js/app.js?v=2.1"></script>
 </body>
 

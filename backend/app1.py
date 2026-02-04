@@ -113,7 +113,7 @@ def login():
             active_sessions[token] = user["id"]
             return jsonify({
                 "token": token,
-                "user": {"id": user["id"], "nombre": user["nombre"]}
+                "user": {"id": user["id"], "nombre": user["nombre"], "username": username}
             })
             
         return jsonify({"message": "Credenciales inválidas"}), 401
@@ -735,6 +735,9 @@ def add_repositorio(current_user_id):
         tags = request.form.get('etiquetas')
         puntos = request.form.get('puntos_clave') # Optional JSON text
 
+        # Get resumen_largo if provided
+        resumen_largo = request.form.get('resumen_largo')
+
         if not titulo:
              return jsonify({"error": "Título es obligatorio"}), 400
 
@@ -752,10 +755,10 @@ def add_repositorio(current_user_id):
                 INSERT INTO repositorio_documentos (
                     titulo, tipo_documento, descripcion, puntos_clave,
                     ruta_archivo, fecha_publicacion, fuente_origen, tipo_fuente,
-                    enlace_externo, etiquetas, uploaded_by
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    enlace_externo, etiquetas, uploaded_by, resumen_largo
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
-            """, (titulo, tipo_doc, desc, puntos, ruta_archivo, fecha_pub, fuente, tipo_fuente, enlace, tags, current_user_id))
+            """, (titulo, tipo_doc, desc, puntos, ruta_archivo, fecha_pub, fuente, tipo_fuente, enlace, tags, current_user_id, resumen_largo))
             
             new_id = cur.fetchone()[0]
             conn.commit()
@@ -806,7 +809,8 @@ def manage_repositorio(current_user_id, id_doc):
                 'tipo_fuente': 'tipo_fuente',
                 'fecha_publicacion': 'fecha_publicacion',
                 'enlace_externo': 'enlace_externo',
-                'etiquetas': 'etiquetas'
+                'etiquetas': 'etiquetas',
+                'resumen_largo': 'resumen_largo'
             }
             
             for key, col in updatable.items():

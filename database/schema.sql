@@ -33,6 +33,8 @@ CREATE TABLE plan_maestro (
     
     status VARCHAR(50) DEFAULT 'Pendiente',
     has_file_uploaded BOOLEAN DEFAULT FALSE,
+
+    
     
     fecha_inicio DATE,
     fecha_fin DATE,
@@ -102,6 +104,7 @@ CREATE TABLE repositorio_documentos (
     enlace_externo VARCHAR(500), -- URL Web
     estado_procesamiento VARCHAR(50) DEFAULT 'Pendiente', -- Pendiente, Resumido, Indexado
     etiquetas VARCHAR(255), -- Tags separados por coma
+    resumen_largo TEXT,
     
     uploaded_by INTEGER REFERENCES usuarios(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
