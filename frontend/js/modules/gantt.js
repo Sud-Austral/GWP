@@ -18,12 +18,17 @@ const GanttModule = {
 
         Utils.renderBreadcrumbs(['Inicio', 'Carta Gantt Global']);
 
-        // Always fetch fresh data to define single source of truth from Server
-        const data = await API.get('/plan-maestro?t=' + Date.now());
-        window.appData = window.appData || {};
-        window.appData.plan = data;
+        // Fetch Plan and Hitos in parallel
+        const [planData, hitosData] = await Promise.all([
+            API.get('/plan-maestro?t=' + Date.now()),
+            API.get('/hitos?t=' + Date.now()).catch(() => [])
+        ]);
 
-        GanttModule.state.data = data || [];
+        window.appData = window.appData || {};
+        window.appData.plan = planData;
+
+        GanttModule.state.data = planData || [];
+        GanttModule.state.hitos = hitosData || [];
 
         // Cascading Filters
         Utils.setupCascadingFilters({
@@ -247,12 +252,35 @@ const GanttModule = {
             if (end < now) barClass = 'bar-late';
         }
 
-        // Grid lines matching dynamic months length
-        // To be simpler, we just use empty cells corresponding to months.
-        // Actually since we use 1 continuous bar container, we need empty cells in background for visual grid.
-        // Or simpler, just rely on grid-column lines.
-        // The background grid is tricky with variable content.
-        // We will just put ONE big cell for the timeline row and use percentage.
+        // --- Render Hitos Markers ---
+        let hitosHtml = '';
+        if (GanttModule.state.hitos) {
+            const rowHitos = GanttModule.state.hitos.filter(h => h.plan_maestro_id === item.id);
+            rowHitos.forEach(h => {
+                if (!h.fecha_estimada) return;
+                const hDate = new Date(h.fecha_estimada);
+                // Check bounds within visual range for simplicity, though CSS hidden overflow works too
+                if (hDate >= minDate && hDate <= maxDate) {
+                    const hPct = ((hDate - minDate) / totalSpan) * 100;
+
+                    // Style by hito status
+                    let hColor = '#f59e0b'; // Amber default
+                    if (h.status === 'Completado') hColor = '#10b981';
+                    else if (h.status === 'En Progreso') hColor = '#3b82f6';
+
+                    hitosHtml += `
+                        <div class="absolute w-3 h-3 transform rotate-45 border border-white shadow-sm z-10 cursor-help group/hito"
+                             style="left: ${hPct}%; top: 50%; margin-top: -6px; background-color: ${hColor};"
+                             title="Hito: ${h.nombre} (${h.status || 'Pendiente'})">
+                             <div class="invisible group-hover/hito:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] px-2 py-1 bg-slate-800 text-white text-[10px] rounded shadow-lg z-50 pointer-events-none text-center">
+                                <div class="font-bold">${h.nombre}</div>
+                                <div class="text-[9px] opacity-80">${Utils.formatDate(h.fecha_estimada)}</div>
+                             </div>
+                        </div>
+                    `;
+                }
+            });
+        }
 
         // Count filtered months
         const numMonths = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24 * 30));
@@ -286,6 +314,10 @@ const GanttModule = {
                      >
                         ${durationText}
                      </div>
+                     
+                     <!-- Hitos Markers -->
+                     ${hitosHtml}
+
                      <!-- Bg lines (approximate) -->
                      <div style="position:absolute; width:100%; height:100%; display:flex; pointer-events:none; z-index:0;">
                         ${gridLines}

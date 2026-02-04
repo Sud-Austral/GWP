@@ -434,47 +434,138 @@ const StatsModule = {
         `).join('');
     },
 
-    renderRecentActions: (data) => {
+    renderRecentActions: async (dataTasks) => {
         const container = document.getElementById('statsRecent');
         if (!container) return;
 
-        const recent = [...data].sort((a, b) => {
-            const da = a.created_at ? new Date(a.created_at) : new Date(0);
-            const db = b.created_at ? new Date(b.created_at) : new Date(0);
-            return db - da;
-        }).slice(0, 5);
+        container.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm italic">Cargando movimientos...</div>';
 
-        if (recent.length === 0) {
-            container.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">No hay movimientos recientes.</div>';
-            return;
+        try {
+            // Fetch all parallel data sources
+            const [hitosRes, obsRes, docsRes] = await Promise.all([
+                API.get('/hitos').catch(() => []),
+                API.get('/observaciones').catch(() => []),
+                API.get('/documentos').catch(() => [])
+            ]);
+
+            // Normalize data for timeline
+            // Status: 0=Task, 1=Hito, 2=Doc, 3=Obs
+            let allItems = [];
+
+            // 1. Tasks
+            dataTasks.forEach(t => {
+                if (t.created_at) {
+                    allItems.push({
+                        type: 'task',
+                        date: new Date(t.created_at),
+                        title: t.task_name,
+                        subtitle: `Código: ${t.activity_code}`,
+                        user: t.created_by_name || 'Sistema', // Assuming we might have this or not
+                        icon: 'fa-tasks',
+                        color: 'indigo'
+                    });
+                }
+            });
+
+            // 2. Hitos
+            if (Array.isArray(hitosRes)) {
+                hitosRes.forEach(h => {
+                    const d = h.created_at || h.fecha_estimada; // Use created_at if available, else estim
+                    if (d) {
+                        allItems.push({
+                            type: 'hito',
+                            date: new Date(d),
+                            title: `Hito: ${h.nombre}`,
+                            subtitle: h.task_name || 'Sin actividad vinculada',
+                            user: 'Sistema',
+                            icon: 'fa-flag',
+                            color: 'amber'
+                        });
+                    }
+                });
+            }
+
+            // 3. Observations
+            if (Array.isArray(obsRes)) {
+                obsRes.forEach(o => {
+                    if (o.created_at) {
+                        allItems.push({
+                            type: 'obs',
+                            date: new Date(o.created_at),
+                            title: `Observación en ${o.activity_code || 'Actividad'}`,
+                            subtitle: o.texto ? (o.texto.substring(0, 50) + '...') : '',
+                            user: o.usuario_nombre || 'Usuario',
+                            icon: 'fa-comment-alt',
+                            color: 'blue'
+                        });
+                    }
+                });
+            }
+
+            // 4. Documents
+            if (Array.isArray(docsRes)) {
+                docsRes.forEach(d => {
+                    if (d.created_at) {
+                        allItems.push({
+                            type: 'doc',
+                            date: new Date(d.created_at),
+                            title: `Documento: ${d.nombre_archivo}`,
+                            subtitle: d.task_name || 'Sin actividad',
+                            user: d.uploader || 'Usuario',
+                            icon: 'fa-file-alt',
+                            color: 'emerald'
+                        });
+                    }
+                });
+            }
+
+            // Sort descending
+            allItems.sort((a, b) => b.date - a.date);
+
+            // Take top 8
+            const recent = allItems.slice(0, 8);
+
+            if (recent.length === 0) {
+                container.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">No hay movimientos recientes.</div>';
+                return;
+            }
+
+            container.innerHTML = recent.map(i => {
+                const dateStr = i.date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                const isNew = (new Date() - i.date) < (1000 * 60 * 60 * 24); // 24h as New
+
+                // Color Mapping
+                const bgClass = `bg-${i.color}-50`;
+                const textClass = `text-${i.color}-500`;
+
+                return `
+                <div class="px-6 py-4 border-b border-slate-50 flex justify-between items-center hover:bg-slate-50 transition-all group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl ${bgClass} ${textClass} flex items-center justify-center text-lg shadow-sm group-hover:scale-110 transition-transform">
+                            <i class="fas ${i.icon}"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-bold text-slate-700 line-clamp-1">${i.title}</span>
+                                ${isNew ? '<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-bold animate-pulse">NUEVO</span>' : ''}
+                            </div>
+                            <div class="text-xs text-slate-400 flex gap-2 items-center">
+                                 <span><i class="fas fa-user-circle text-[10px]"></i> ${i.user}</span>
+                                 <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+                                 <span>${i.subtitle}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-xs text-slate-400 font-medium whitespace-nowrap">
+                        ${dateStr}
+                    </div>
+                </div>
+            `}).join('');
+
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = '<div class="p-6 text-center text-red-400 text-sm">Error cargando movimientos recientes.</div>';
         }
-
-        container.innerHTML = recent.map(i => {
-            const dateStr = i.created_at || new Date().toISOString();
-            const isNew = (new Date() - new Date(dateStr)) < (1000 * 60 * 60 * 48);
-            return `
-            <div class="px-6 py-4 border-b border-slate-50 flex justify-between items-center hover:bg-slate-50 transition-all">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center text-lg">
-                        <i class="fas fa-plus-circle"></i>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm font-bold text-slate-700 line-clamp-1">${i.task_name}</span>
-                            ${isNew ? '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 text-[10px] font-bold">NUEVO</span>' : ''}
-                        </div>
-                        <div class="text-xs text-slate-400 flex gap-2">
-                             <span>${i.activity_code || 'GWP'}</span>
-                             <span>•</span>
-                             <span>Ingresado por: ${i.primary_responsible || 'Sistema'}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="text-xs text-slate-400 font-medium">
-                    ${Utils.formatDate(dateStr)}
-                </div>
-            </div>
-        `}).join('');
     }
 };
 

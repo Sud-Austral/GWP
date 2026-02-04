@@ -115,6 +115,17 @@
                 </a>
             </nav>
 
+            <!-- Help Button (Small Round) -->
+            <div class="px-4 mb-4 mt-auto flex justify-center">
+                <button onclick="Utils.showHelpForCurrentView()"
+                    class="w-12 h-12 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white rounded-full shadow-lg hover:shadow-indigo-500/30 hover:scale-110 transition-all duration-300 flex items-center justify-center group relative overflow-hidden"
+                    title="Ayuda Contextual">
+                    <div class="absolute inset-0 bg-white/10 group-hover:rotate-90 transition-transform duration-500">
+                    </div>
+                    <i class="fas fa-question text-xl relative z-10"></i>
+                </button>
+            </div>
+
             <div class="user-profile">
                 <div class="user-avatar">
                     <i class="fas fa-user"></i>
@@ -358,9 +369,6 @@
                 <header class="page-header">
                     <h1 class="page-title">Gestión de Actividades</h1>
                     <div class="flex gap-2">
-                        <button class="btn btn-secondary btn-sm" onclick="PlanModule.loadData()" title="Recargar datos">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
                         <button class="btn btn-primary" id="btnNewActivity">
                             <i class="fas fa-plus"></i> Nueva Actividad
                         </button>
@@ -843,8 +851,10 @@
                         <div class="group">
                             <label
                                 class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Institución</label>
-                            <input type="text" id="repoFilterOrigin" placeholder="Ej: CONAF..."
-                                class="form-input w-full text-xs py-2 h-10 bg-white border-slate-200 rounded-lg focus:border-blue-500">
+                            <select id="repoFilterOrigin"
+                                class="form-select w-full text-xs py-2 h-10 bg-white border-slate-200 rounded-lg focus:border-blue-500">
+                                <option value="">Todos</option>
+                            </select>
                         </div>
 
                         <!-- Tags -->

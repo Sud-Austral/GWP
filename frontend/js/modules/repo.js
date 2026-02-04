@@ -41,6 +41,7 @@ const RepoModule = {
             RepoModule.data = data || [];
             RepoModule.populateTags();
             RepoModule.populateYears();
+            RepoModule.populateInstitutions();
             RepoModule.render(RepoModule.data);
 
         } catch (e) {
@@ -95,6 +96,29 @@ const RepoModule = {
         select.innerHTML = '<option value="">Todos</option>';
         sorted.forEach(y => {
             select.innerHTML += `<option value="${y}">${y}</option>`;
+        });
+    },
+
+    populateInstitutions: () => {
+        const select = document.getElementById('repoFilterOrigin');
+        if (!select) return;
+
+        const origins = new Set();
+        RepoModule.data.forEach(item => {
+            if (item.fuente_origen) {
+                // Split by comma if multiple origins might be present, or just take whole string
+                item.fuente_origen.split(',').forEach(o => {
+                    const clean = o.trim();
+                    if (clean) origins.add(clean);
+                });
+            }
+        });
+
+        const sorted = Array.from(origins).sort();
+
+        select.innerHTML = '<option value="">Todas</option>';
+        sorted.forEach(o => {
+            select.innerHTML += `<option value="${o}">${o}</option>`;
         });
     },
 

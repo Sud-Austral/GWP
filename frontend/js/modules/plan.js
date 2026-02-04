@@ -313,7 +313,7 @@ const PlanModule = {
         PlanModule.setupEvents();
 
         // Utils
-        Utils.initCascadingDropdowns();
+        // Utils.initCascadingDropdowns(); // Removed: Not defined in Utils
         Utils.initTabs();
     },
 
@@ -599,69 +599,55 @@ const PlanModule = {
                 ${CardField('Semana', `S${item.week_start} - S${item.week_end}`, 'fa-calendar-week', 'blue')}
                 ${CardField('Dependencia', item.dependency_code, 'fa-project-diagram', 'purple')}
             </div>
+            <!-- HITOS SECTION (Interactive) -->
+            <div class="mt-8 px-2">
+                <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+                    <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fas fa-map-marker-alt text-indigo-500"></i> Hitos Clave
+                    </h3>
+                </div>
+                <div id="detailHitosList" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="text-sm text-slate-400 italic">Cargando hitos...</div>
+                </div>
+            </div>
         `;
 
-        // Show modal
-        Utils.openModal('detailModal');
+        // Load Hitos
+        const hitos = await API.get(`/plan-maestro/${item.id}/hitos`);
+        const hitosContainer = document.getElementById('detailHitosList');
 
-        // 2. HITOS (Timeline Modern)
-        const hDiv = document.getElementById('detailHitosList');
-        hDiv.style.cssText = "padding:0 8px;";
-        hDiv.className = ""; // clear tailwind styles if any conflicts
-        hDiv.innerHTML = '<div style="text-align:center; padding:20px; color:#cbd5e1; font-style:italic;">Cargando línea de tiempo...</div>';
+        if (hitos && hitos.length > 0) {
+            hitosContainer.innerHTML = hitos.map(h => {
+                const status = h.status || h.estado || 'Pendiente';
+                let statusColor = 'text-slate-500 bg-slate-50 border-slate-200';
+                if (status === 'Completado') statusColor = 'text-green-700 bg-green-50 border-green-200';
+                else if (status === 'En Progreso') statusColor = 'text-blue-700 bg-blue-50 border-blue-200';
+                else if (status === 'Pendiente') statusColor = 'text-amber-700 bg-amber-50 border-amber-200';
 
-        try {
-            const hitos = await API.get(`/plan-maestro/${id}/hitos`);
-            if (hitos && hitos.length > 0) {
-                hDiv.innerHTML = hitos.map(h => {
-                    const isDone = h.estado === 'Completado';
-                    const color = isDone ? '#10b981' : '#cbd5e1'; // Emerald vs Slate
-                    return `
-                    <div id="hito-row-${h.id}" style="position:relative; padding-left:24px; margin-bottom:20px; border-left:2px solid ${color};">
-                        <div style="position:absolute; left:-6px; top:0; width:10px; height:10px; border-radius:50%; background:${color}; border:2px solid white; box-shadow:0 0 0 2px ${color};"></div>
-                        
-                        <!-- View Mode -->
-                        <div style="background:white; border-radius:12px; padding:12px; border:1px solid #f1f5f9; box-shadow:0 2px 10px rgba(0,0,0,0.02); position:relative;">
-                             <div style="position:absolute; right:12px; top:12px; display:flex; gap:8px;">
-                                <button onclick="PlanModule.enableEditHito(${h.id}, '${h.nombre.replace(/'/g, "\\'")}', '${h.fecha_estimada ? h.fecha_estimada.split('T')[0] : ''}', '${h.estado}', ${id})" 
-                                    style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#eff6ff; color:#3b82f6; border:1px solid #dbeafe; cursor:pointer; transition:all 0.2s;" 
-                                    onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'" title="Editar">
-                                    <i class="fas fa-pencil-alt" style="font-size:0.9rem;"></i>
-                                </button>
-                                <button onclick="PlanModule.deleteHito(${h.id}, ${id})" 
-                                    style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#fef2f2; color:#ef4444; border:1px solid #fee2e2; cursor:pointer; transition:all 0.2s;" 
-                                    onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'" title="Eliminar">
-                                    <i class="fas fa-trash" style="font-size:0.9rem;"></i>
-                                </button>
-                             </div>
-
-                            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:6px; margin-right:60px;">
-                                <div style="font-weight:700; color:#334155; font-size:0.95rem;">${h.nombre}</div>
-                            </div>
-                             <span style="font-size:0.75rem; font-family:monospace; color:#64748b; background:#f8fafc; padding:2px 6px; border-radius:4px; margin-bottom:8px; display:inline-block;">
-                                    ${Utils.formatDate(h.fecha_estimada)}
-                            </span>
-                            <div style="font-size:0.85rem; color:#64748b; margin-bottom:8px;">${h.descripcion || ''}</div>
-                            
-                            <span style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:${isDone ? '#10b981' : '#94a3b8'};">
-                                ${isDone ? '<i class="fas fa-check"></i> Completado' : '<i class="far fa-clock"></i> Pendiente'}
-                            </span>
+                return `
+                    <div class="bg-white border border-slate-100 rounded-xl p-3 shadow-sm flex flex-col gap-2 group hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div class="font-bold text-sm text-slate-700 leading-tight">${h.nombre}</div>
+                            <select onchange="PlanModule.updateHitoStatus(${h.id}, this.value, ${id})" 
+                                class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border ${statusColor} outline-none cursor-pointer hover:opacity-80 transition-opacity appearance-none"
+                                title="Cambiar estado: Pendiente, En Progreso, Completado">
+                                <option value="Pendiente" ${status === 'Pendiente' ? 'selected' : ''}>PENDIENTE</option>
+                                <option value="En Progreso" ${status === 'En Progreso' ? 'selected' : ''}>EN PROGRESO</option>
+                                <option value="Completado" ${status === 'Completado' ? 'selected' : ''}>COMPLETADO</option>
+                            </select>
                         </div>
+                        <div class="text-xs text-slate-500 flex items-center gap-2">
+                            <i class="far fa-calendar"></i> ${Utils.formatDate(h.fecha_estimada)}
+                        </div>
+                        ${h.descripcion ? `<div class="text-xs text-slate-400 line-clamp-2">${h.descripcion}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        } else {
+            hitosContainer.innerHTML = '<div class="col-span-2 text-sm text-slate-400 italic bg-slate-50 p-4 rounded-xl text-center">No hay hitos definidos para esta actividad.</div>';
+        }
 
-                        <!-- Edit Mode (Hidden) -->
-                        <div id="hito-edit-${h.id}" style="display:none; background:white; padding:16px; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 4px 15px rgba(0,0,0,0.05);"></div>
-                    </div>
-                 `;
-                }).join('');
-            } else {
-                hDiv.innerHTML = `
-                    <div style="text-align:center; padding:30px; background:#f8fafc; border-radius:16px; border:1px dashed #cbd5e1;">
-                        <i class="fas fa-route" style="font-size:2rem; color:#cbd5e1; margin-bottom:10px;"></i>
-                        <div style="color:#94a3b8; font-size:0.9rem;">No hay hitos definidos</div>
-                    </div>
-                 `;
-            }
-        } catch (e) { hDiv.innerHTML = 'Error hitos'; }
+        Utils.openModal('planDetailModal');
 
         // 3. DOCUMENTOS (Card Enhanced)
         const dDiv = document.getElementById('detailDocsList');
@@ -782,6 +768,37 @@ const PlanModule = {
             PlanModule.viewDetails(planId);
         } catch (e) {
             Utils.showToast('Error al agregar observación', 'error');
+        }
+    },
+
+    updateHitoStatus: async (hitoId, newStatus, planId) => {
+        try {
+            // Updated to use 'estado' or 'status' depending on backend. app1.py lines 420 uses 'estado'.
+            // But frontend typically uses status. Let's send 'estado' as per Python backend.
+            await API.put(`/hitos/${hitoId}`, { estado: newStatus });
+
+            Utils.showToast(`Hito actualizado a: ${newStatus}`, 'success');
+
+            // Refresh details view background without closing if possible, 
+            // but simpler to just reload the view to reflect color changes fully
+            // or manually update class. Reload is safer.
+            // We can use a specialized re-render if we want less flicker.
+            // For now, reload details.
+            // We delay slightly to allow toast to render
+            // setTimeout(() => PlanModule.viewDetails(planId), 100);
+            // Better: update the select border color instantly
+
+            // Wait, if I reload viewDetails, it might flicker.
+            // Since I used onchange in the select, visual value is already updated.
+            // I should update the color classes of the parent div if I want perfection.
+            // But re-calling viewDetails ensures data consistency.
+            setTimeout(() => PlanModule.viewDetails(planId), 50);
+
+            // Also invalidate Gantt data cache if any, or trigger reload if needed?
+            // Gantt auto-fetches.
+        } catch (e) {
+            Utils.showToast('Error al actualizar hito', 'error');
+            console.error(e);
         }
     }
 };

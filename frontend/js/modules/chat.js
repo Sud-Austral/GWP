@@ -8,7 +8,7 @@ const ChatModule = {
     config: {
         API_KEY: "db8a685011014b91b029a2de25022cec.M5Qd8ANQH8rLOLl0",
         API_URL: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-        MODEL_NAME: "GLM-4.7-FlashX",
+        MODEL_NAME: "GLM-4.7-Flash",
         //MODEL_NAME: "GLM-4.7",
         MODEL_NAME1: "GLM-4.7-FlashX",
         MODEL_NAME2: "GLM-4.7",
@@ -205,9 +205,11 @@ Tienes acceso a la siguiente biblioteca de ${docs.length} documentos:
 ${docsSummary}
 
 INSTRUCCIONES CLAVE:
-1. **Referencias Obligatorias**: Cita SIEMPRE tus fuentes. Cada vez que menciones un dato, idea o conclusión extraída de un documento, DEBES incluir su referencia exacta usando el formato [[ID:numero_id]] al final de la frase o párrafo.
-   - Ejemplo: "El presupuesto aumentó un 15% [[ID:12]] debido a factores externos [[ID:4]]."
-   - NO uses paréntesis normales (ID:1) ni texto como "en el documento 1". Usa EXCLUSIVAMENTE [[ID:1]].
+1. **Referencias Obligatorias**: Cita SIEMPRE tus fuentes. Cada vez que menciones un dato, idea o conclusión extraída de un documento, DEBES incluir su referencia exacta usando el formato [[ID:numero_id|Página:numero]] al final de la frase o párrafo.
+   - Si sabes la página exacta, usa: [[ID:12|Página:5]].
+   - Si no sabes la página, usa solo el ID: [[ID:12]].
+   - Ejemplo: "El presupuesto aumentó un 15% [[ID:12|Página:5]] debido a factores externos [[ID:4]]."
+   - NO uses paréntesis normales (ID:1) ni texto como "en el documento 1".
 
 2. **Estilo de Respuesta**: Responde en español de forma profesional, detallada y explicativa. 
    - Proporciona respuestas profundas (aprox. 20% más extensas de lo habitual).
@@ -276,47 +278,69 @@ Al final de tu respuesta, sugieres 3 preguntas de seguimiento con este formato E
     formatResponse: (text) => {
         // Clean emojis first
         text = ChatModule.removeEmojis(text);
-        // Extract suggestions. Regex handles:
-        // - Optional spaces after colon
-        // - Capture text until closing bracket OR end of line (if bracket missing)
-        // - Non-greedy match
-        const suggestionRegex = /\[SUGERENCIA:\s*(.+?)(?:\]|\n|$)/g;
 
+        // 1. Extract Suggestions first to keep them clean
+        const suggestionRegex = /\[SUGERENCIA:\s*(.+?)(?:\]|\n|$)/g;
         let suggestionsHTML = '<div class="mt-3 flex flex-col gap-2">';
         let hasSuggestions = false;
 
-        // First pass: remove suggestions from text and build HTML list
         const cleanText = text.replace(suggestionRegex, (match, question) => {
-            // Clean up question text just in case
             const q = question.trim();
             if (q.length > 2) {
                 hasSuggestions = true;
+                const safeQ = q.replace(/'/g, "\\'");
                 suggestionsHTML += `
-                    <button onclick="ChatModule.sendChat('${q.replace(/'/g, "\\'")}')" 
+                    <button onclick="ChatModule.sendChat('${safeQ}')" 
                         class="text-left text-xs bg-indigo-50 border border-indigo-100 text-indigo-600 px-3 py-2 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-2 w-full">
                         <i class="fas fa-reply text-[10px] flex-shrink-0"></i> 
                         <span class="truncate-2-lines">${q}</span>
                     </button>`;
             }
-            return ''; // Remove from main text
+            return '';
         }).trim();
-
         suggestionsHTML += '</div>';
 
-        // Format Main Text
+        // 2. Format Citations properly
+        // We use a temporary placeholder to avoid breaking HTML during the main formatting pass
         let formatted = cleanText
-            // Format Citations: [[ID:123]]
-            .replace(/\[\[ID:(\d+)\]\]/g, (match, id) => {
-                return `<button onclick="ChatModule.viewDocReference(${id})" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-colors mx-0.5 align-middle transform -translate-y-px" title="Ver documento fuente">
-                    <i class="fas fa-book-open text-[9px]"></i> Ref.${id}
-                </button>`;
-            })
-            // Standard formatting
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/\n\n/g, '<br><br>') // Paragraphs
+            .replace(/\n\n/g, '<br><br>')
             .replace(/\n/g, '<br>')
             .replace(/- /g, '• ');
+
+        // 3. Inject Citations buttons cleanly
+        // Using a function to build the button ensures attributes are properly escaped
+        formatted = formatted.replace(/\[\[ID:(\d+)(?:\|Página:(\d+))?\]\]/g, (match, id, page) => {
+            const pageText = page ? ` (Pág.${page})` : '';
+            const doc = ChatModule.getDocuments().find(d => d.id == id);
+
+            let tooltipHtml = '';
+            if (doc) {
+                const safe = (str) => (str || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const year = doc.fecha_publicacion ? doc.fecha_publicacion.substring(0, 4) : 'N/A';
+
+                tooltipHtml = `
+                    <div class="invisible group-hover/cite:visible opacity-0 group-hover/cite:opacity-100 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-xl shadow-xl z-50 pointer-events-none transition-all duration-200 transform translate-y-2 group-hover/cite:translate-y-0 text-left leading-normal">
+                        <div class="font-bold text-indigo-300 mb-1 line-clamp-2 leading-tight">${safe(doc.titulo)}</div>
+                        <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] text-slate-300 border-t border-slate-700 pt-2 mt-2">
+                            <div><span class="text-slate-500 block">Tipo</span> ${safe(doc.tipo_documento)}</div>
+                            <div><span class="text-slate-500 block">Año</span> ${year}</div>
+                            <div class="col-span-2 pt-1"><span class="text-slate-500 block">Fuente</span> ${safe(doc.fuente_origen)}</div>
+                        </div>
+                        <!-- Arrow -->
+                        <div class="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800"></div>
+                    </div>
+                `;
+            }
+
+            // Important: No newlines inside the tag string to avoid <br> replacement issues if logic changes
+            return `<button onclick="ChatModule.viewDocReference(${id})" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 transition-all mx-1 align-baseline transform relative group/cite shadow-sm">
+                <i class="fas fa-book-open text-indigo-500"></i> 
+                <span class="underline decoration-indigo-300 decoration-1 underline-offset-2">Ref.${id}${pageText}</span>
+                ${tooltipHtml}
+            </button>`;
+        });
 
         if (hasSuggestions) {
             formatted += suggestionsHTML;
@@ -362,20 +386,19 @@ Requisitos:
    - **Hallazgos Principales**: Análisis temático detallado.
    - **Discrepancias o Conflictos**: Si los documentos se contradicen.
    - **Conclusiones y Recomendaciones**.
-3. **Referencias**: Cita obligatoriamente los documentos fuente usando el formato [[ID:id]] en cada afirmación clave.
+3. **Referencias**: Cita obligatoriamente los documentos fuente usando el formato [[ID:id|Página:num]] (si conoces la página) o [[ID:id]] en cada afirmación clave.
 
 Por favor, comienza el análisis ahora.`;
 
         ChatModule.sendChat(prompt);
     },
-},
 
     // Clear chat history
     clearChat: () => {
         const messagesContainer = document.getElementById('repoChatMessages');
-if (!messagesContainer) return;
+        if (!messagesContainer) return;
 
-messagesContainer.innerHTML = `
+        messagesContainer.innerHTML = `
             <div class="flex gap-3">
                 <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <i class="fas fa-robot text-indigo-600 text-sm"></i>
@@ -386,7 +409,7 @@ messagesContainer.innerHTML = `
                 </div>
             </div>
         `;
-ChatModule.state.messages = [];
+        ChatModule.state.messages = [];
     }
 };
 
