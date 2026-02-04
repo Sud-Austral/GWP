@@ -335,9 +335,9 @@ Al final de tu respuesta, sugieres 3 preguntas de seguimiento con este formato E
             }
 
             // Important: No newlines inside the tag string to avoid <br> replacement issues if logic changes
-            return `<button onclick="ChatModule.viewDocReference(${id})" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 transition-all mx-1 align-baseline transform relative group/cite shadow-sm">
-                <i class="fas fa-book-open text-indigo-500"></i> 
-                <span class="underline decoration-indigo-300 decoration-1 underline-offset-2">Ref.${id}${pageText}</span>
+            return `<button onclick="ChatModule.viewDocReference(${id})" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md hover:shadow-indigo-500/30 hover:scale-105 transition-all mx-1 align-baseline transform relative group/cite border border-white/20">
+                <i class="fas fa-book-open text-white/90"></i> 
+                <span class="tracking-wide">Ref.${id}${pageText}</span>
                 ${tooltipHtml}
             </button>`;
         });
