@@ -8,6 +8,7 @@ const Router = {
     // Add usernames/nombres here to restrict them to view-only mode
     readOnlyUsers: [
         'visita',
+        'conaf',
         // Add more usernames as needed
     ],
 
