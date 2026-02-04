@@ -926,10 +926,22 @@
                                 <div class="text-xs text-white/70">Biblioteca Estratégica</div>
                             </div>
                         </div>
-                        <button onclick="RepoModule.toggleChat()" class="text-white/70 hover:text-white p-2"
-                            style="line-height: 1; background: none; border: none;">
-                            <i class="fas fa-times"></i>
-                        </button>
+                        <div class="flex items-center gap-1">
+                            <button onclick="RepoModule.generateExecutiveSummary()"
+                                class="text-white/70 hover:text-white p-2"
+                                style="line-height: 1; background: none; border: none;"
+                                title="Generar Resumen Ejecutivo (4 planas)">
+                                <i class="fas fa-file-contract"></i>
+                            </button>
+                            <button onclick="RepoModule.downloadChat()" class="text-white/70 hover:text-white p-2"
+                                style="line-height: 1; background: none; border: none;" title="Descargar chat">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button onclick="RepoModule.toggleChat()" class="text-white/70 hover:text-white p-2"
+                                style="line-height: 1; background: none; border: none;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
                     </div>
                     <div id="repoChatMessages" class="h-80 overflow-y-auto p-4 space-y-4 bg-slate-50">
                         <div class="flex gap-3">

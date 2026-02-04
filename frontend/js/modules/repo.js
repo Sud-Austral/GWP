@@ -520,6 +520,8 @@ const RepoModule = {
     // ========== Chat Delegation to ChatModule ==========
     toggleChat: () => ChatModule.toggleChat(),
     sendChat: () => ChatModule.sendChat(),
+    downloadChat: () => ChatModule.downloadChat(),
+    generateExecutiveSummary: () => ChatModule.generateExecutiveSummary(),
     setFilteredDocsForChat: (docs) => ChatModule.setFilteredDocs(docs)
 };
 
