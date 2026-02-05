@@ -298,6 +298,10 @@ const PlanModule = {
                 if (item.has_file_uploaded) {
                     document.getElementById('fileStatus').innerHTML = '<i class="fas fa-check text-green-500"></i> Archivo cargado previamente';
                 }
+
+                // --- FIX: Load tangential data immediately ---
+                PlanModule.loadHitos(item.id);
+                PlanModule.loadModalObs(item.id);
             }
         }
 
@@ -505,10 +509,9 @@ const PlanModule = {
         const item = window.appData.plan.find(i => i.id === id);
         if (!item) return;
 
-        // Populate Info General
         // --- PALETA DE COLORES TIPO DASHBOARD ---
         const Colors = {
-            primary: 'linear-gradient(135deg, #4361EE 0%, #3F37C9 100%)', // Blue to Purple
+            primary: 'linear-gradient(135deg, #4361EE 0%, #3F37C9 100%)',
             cardBg: '#ffffff',
             iconBg: {
                 blue: '#e0f2fe', iconBlue: '#0284c7',
@@ -519,10 +522,10 @@ const PlanModule = {
             }
         };
 
-        // --- HELPER PARA TARJETAS DE DATOS (KPI STYLE) ---
+        // --- HELPER PARA TARJETAS DE DATOS ---
         const CardField = (label, value, iconClass, colorTheme = 'blue') => {
-            const bg = Colors.iconBg[colorTheme];
-            const txt = Colors.iconBg['icon' + colorTheme.charAt(0).toUpperCase() + colorTheme.slice(1)];
+            const bg = Colors.iconBg[colorTheme] || '#f1f5f9';
+            const txt = Colors.iconBg['icon' + colorTheme.charAt(0).toUpperCase() + colorTheme.slice(1)] || '#64748b';
             return `
             <div style="background:white; border-radius:16px; padding:16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display:flex; align-items:center; gap:16px; border:1px solid #f1f5f9;">
                 <div style="width:48px; height:48px; border-radius:12px; background:${bg}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
@@ -541,34 +544,36 @@ const PlanModule = {
         // 1. POPULATE GENERAL INFO
         const genDiv = document.getElementById('detailGeneral');
 
-        // Status Badge Logic
         let statusStyle = 'background:#f1f5f9; color:#64748b;';
-        if (item.status === 'Completado') statusStyle = 'background:#dcfce7; color:#16a34a;';
-        else if (item.status === 'En Progreso') statusStyle = 'background:#dbeafe; color:#2563eb;';
-        else if (item.status === 'Retrasado') statusStyle = 'background:#fee2e2; color:#dc2626;';
+        if (item.status === 'Completado' || item.status === 'Finalizado') statusStyle = 'background:#dcfce7; color:#16a34a;box-shadow: 0 4px 6px rgba(22, 163, 74, 0.2);';
+        else if (item.status === 'En Progreso' || item.status === 'Ejecución') statusStyle = 'background:#dbeafe; color:#2563eb;box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);';
+        else if (item.status === 'Retrasado' || item.status === 'Pendiente') statusStyle = 'background:#fee2e2; color:#dc2626;box-shadow: 0 4px 6px rgba(220, 38, 38, 0.2);';
 
         genDiv.style.display = 'block';
-        genDiv.className = '';
         genDiv.innerHTML = `
             <!-- HEADER HERO -->
-            <div style="background:${Colors.primary}; margin:-1.5rem -1.5rem 2rem -1.5rem; padding:2rem; color:white; border-radius: 0 0 24px 24px; box-shadow: 0 10px 30px -10px rgba(67, 97, 238, 0.4);">
-                <div style="display:flex; justify-content:space-between; align-items:start;">
+            <div style="background:${Colors.primary}; margin:-1.5rem -1.5rem 2rem -1.5rem; padding:2rem; color:white; border-radius: 0 0 24px 24px; box-shadow: 0 10px 30px -10px rgba(67, 97, 238, 0.4); position:relative; overflow:hidden;">
+                <!-- Decorative Circles -->
+                <div style="position:absolute; top:-20px; right:-20px; width:150px; height:150px; background:rgba(255,255,255,0.1); border-radius:50%;"></div>
+                <div style="position:absolute; bottom:-40px; left:20px; width:100px; height:100px; background:rgba(255,255,255,0.1); border-radius:50%;"></div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:start; position:relative; z-index:1;">
                     <div>
                         <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
-                            <span style="background:rgba(255,255,255,0.2); padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:700; letter-spacing:1px;">${item.activity_code}</span>
+                            <span style="background:rgba(255,255,255,0.25); padding:4px 12px; border-radius:20px; font-size:0.75rem; font-weight:700; letter-spacing:1px; backdrop-filter:blur(4px);">${item.activity_code || 'S/C'}</span>
                             <span style="background:rgba(255,255,255,0.2); padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:600;">${item.type_tag || 'GEN'}</span>
                         </div>
-                        <h2 style="font-size:1.5rem; font-weight:800; line-height:1.3; margin:0; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">${item.task_name}</h2>
+                        <h2 style="font-size:1.75rem; font-weight:800; line-height:1.2; margin:0; margin-bottom:0.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width:600px;">${item.task_name}</h2>
                     </div>
-                    <div>
+                    <div style="flex-shrink:0;">
                         <div style="display:flex; gap:10px; align-items:center;">
-                            <span style="padding:6px 16px; border-radius:30px; font-size:0.8rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; background:white; color:#4361EE; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                                ${item.status}
+                            <span style="padding:8px 20px; border-radius:30px; font-size:0.85rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; ${statusStyle} background:white;">
+                                ${item.status || 'Pendiente'}
                             </span>
-                             <button onclick="PlanModule.edit(${item.id}); Utils.closeModal('planDetailModal');" 
-                                style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.2); border:none; color:white; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); transition:background 0.2s;"
-                                onmouseover="this.style.background='rgba(255,255,255,0.4)'"
-                                onmouseout="this.style.background='rgba(255,255,255,0.2)'"
+                             <button onclick="PlanModule.edit(${item.id}); Utils.closeModal('detailModal');" 
+                                style="width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.3); color:white; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); transition:all 0.2s;"
+                                onmouseover="this.style.background='rgba(255,255,255,0.4)'; this.style.transform='scale(1.1)'"
+                                onmouseout="this.style.background='rgba(255,255,255,0.2)'; this.style.transform='scale(1)'"
                                 title="Editar Datos Principales">
                                 <i class="fas fa-pencil-alt"></i>
                             </button>
@@ -576,20 +581,19 @@ const PlanModule = {
                     </div>
                 </div>
                 
-                <!-- EVIDENCE REQUIREMENT (Floating) -->
                 ${item.evidence_requirement ? `
-                <div style="margin-top:20px; background:rgba(255,255,255,0.15); backdrop-filter:blur(5px); border:1px solid rgba(255,255,255,0.2); border-radius:12px; padding:12px; display:flex; align-items:center; gap:12px;">
-                    <i class="fas fa-info-circle" style="color:#ffd700; font-size:1.2rem;"></i>
-                    <div>
-                        <div style="font-size:0.7rem; opacity:0.8; font-weight:700; text-transform:uppercase;">Requisito de Evidencia</div>
-                        <div style="font-size:0.9rem; font-weight:500;">${item.evidence_requirement}</div>
+                <div style="margin-top:20px; background:rgba(0,0,0,0.2); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px 16px; display:inline-flex; align-items:center; gap:12px;">
+                    <i class="fas fa-calendar-check" style="color:#fbbf24; font-size:1.2rem;"></i>
+                    <div style="border-left:1px solid rgba(255,255,255,0.2); padding-left:12px;">
+                        <div style="font-size:0.7rem; opacity:0.8; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Requisito de Entrega</div>
+                        <div style="font-size:0.95rem; font-weight:600;">${item.evidence_requirement}</div>
                     </div>
                 </div>
                 ` : ''}
             </div>
 
-            <!-- INFO GRID (CARDS) -->
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:32px; padding:0 8px;">
+            <!-- INFO GRID -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; padding:0 8px;">
                 ${CardField('Producto', item.product_code, 'fa-box', 'purple')}
                 ${CardField('Responsable', item.primary_responsible, 'fa-user-tie', 'blue')}
                 ${CardField('Rol / Cargo', item.primary_role, 'fa-id-badge', 'green')}
@@ -599,123 +603,124 @@ const PlanModule = {
                 ${CardField('Semana', `S${item.week_start} - S${item.week_end}`, 'fa-calendar-week', 'blue')}
                 ${CardField('Dependencia', item.dependency_code, 'fa-project-diagram', 'purple')}
             </div>
-            <!-- HITOS SECTION (Interactive) -->
-            <div class="mt-8 px-2">
-                <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
-                    <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
-                        <i class="fas fa-map-marker-alt text-indigo-500"></i> Hitos Clave
-                    </h3>
-                </div>
-                <div id="detailHitosList" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div class="text-sm text-slate-400 italic">Cargando hitos...</div>
-                </div>
-            </div>
         `;
 
-        // Load Hitos
-        const hitos = await API.get(`/plan-maestro/${item.id}/hitos`);
+        // 2. OPEN MODAL IMMEDIATELY
+        Utils.openModal('detailModal');
+
+        // 3. ASYNC LOAD OPTIMIZATION (Load all sections in parallel safe mode)
+
+        // --- A. HITOS ---
         const hitosContainer = document.getElementById('detailHitosList');
+        if (hitosContainer) {
+            hitosContainer.innerHTML = '<div class="text-center p-4"><i class="fas fa-spinner fa-spin text-indigo-500"></i> <span class="text-slate-400 text-sm ml-2">Cargando hitos...</span></div>';
 
-        if (hitos && hitos.length > 0) {
-            hitosContainer.innerHTML = hitos.map(h => {
-                const status = h.status || h.estado || 'Pendiente';
-                let statusColor = 'text-slate-500 bg-slate-50 border-slate-200';
-                if (status === 'Completado') statusColor = 'text-green-700 bg-green-50 border-green-200';
-                else if (status === 'En Progreso') statusColor = 'text-blue-700 bg-blue-50 border-blue-200';
-                else if (status === 'Pendiente') statusColor = 'text-amber-700 bg-amber-50 border-amber-200';
+            // Non-blocking fetch
+            API.get(`/plan-maestro/${item.id}/hitos`).then(hitos => {
+                if (hitos && hitos.length > 0) {
+                    hitosContainer.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-2 gap-3">' + hitos.map(h => {
+                        const status = h.status || h.estado || 'Pendiente';
+                        let statusColor = 'text-slate-500 bg-slate-50 border-slate-200';
+                        if (status === 'Completado') statusColor = 'text-green-700 bg-green-50 border-green-200';
+                        else if (status === 'En Progreso') statusColor = 'text-blue-700 bg-blue-50 border-blue-200';
+                        else if (status === 'Pendiente') statusColor = 'text-amber-700 bg-amber-50 border-amber-200';
 
-                return `
-                    <div class="bg-white border border-slate-100 rounded-xl p-3 shadow-sm flex flex-col gap-2 group hover:shadow-md transition-shadow">
-                        <div class="flex justify-between items-start">
-                            <div class="font-bold text-sm text-slate-700 leading-tight">${h.nombre}</div>
-                            <select onchange="PlanModule.updateHitoStatus(${h.id}, this.value, ${id})" 
-                                class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border ${statusColor} outline-none cursor-pointer hover:opacity-80 transition-opacity appearance-none"
-                                title="Cambiar estado: Pendiente, En Progreso, Completado">
-                                <option value="Pendiente" ${status === 'Pendiente' ? 'selected' : ''}>PENDIENTE</option>
-                                <option value="En Progreso" ${status === 'En Progreso' ? 'selected' : ''}>EN PROGRESO</option>
-                                <option value="Completado" ${status === 'Completado' ? 'selected' : ''}>COMPLETADO</option>
-                            </select>
-                        </div>
-                        <div class="text-xs text-slate-500 flex items-center gap-2">
-                            <i class="far fa-calendar"></i> ${Utils.formatDate(h.fecha_estimada)}
-                        </div>
-                        ${h.descripcion ? `<div class="text-xs text-slate-400 line-clamp-2">${h.descripcion}</div>` : ''}
-                    </div>
-                `;
-            }).join('');
-        } else {
-            hitosContainer.innerHTML = '<div class="col-span-2 text-sm text-slate-400 italic bg-slate-50 p-4 rounded-xl text-center">No hay hitos definidos para esta actividad.</div>';
+                        return `
+                            <div class="bg-white border border-slate-100 rounded-xl p-3 shadow-sm flex flex-col gap-2 group hover:shadow-md transition-shadow">
+                                <div class="flex justify-between items-start">
+                                    <div class="font-bold text-sm text-slate-700 leading-tight">${h.nombre}</div>
+                                    <select onchange="PlanModule.updateHitoStatus(${h.id}, this.value, ${id})" 
+                                        class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border ${statusColor} outline-none cursor-pointer hover:opacity-80 transition-opacity appearance-none"
+                                        title="Cambiar estado">
+                                        <option value="Pendiente" ${status === 'Pendiente' ? 'selected' : ''}>PENDIENTE</option>
+                                        <option value="En Progreso" ${status === 'En Progreso' ? 'selected' : ''}>EN PROGRESO</option>
+                                        <option value="Completado" ${status === 'Completado' ? 'selected' : ''}>COMPLETADO</option>
+                                    </select>
+                                </div>
+                                <div class="text-xs text-slate-500 flex items-center gap-2">
+                                    <i class="far fa-calendar"></i> ${Utils.formatDate(h.fecha_estimada)}
+                                </div>
+                                ${h.descripcion ? `<div class="text-xs text-slate-400 line-clamp-2">${h.descripcion}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('') + '</div>';
+                } else {
+                    hitosContainer.innerHTML = '<div class="text-sm text-slate-400 italic bg-slate-50 p-4 rounded-xl text-center">No hay hitos definidos para esta actividad.</div>';
+                }
+            }).catch(err => {
+                hitosContainer.innerHTML = '<div class="text-sm text-red-400 bg-red-50 p-3 rounded-lg text-center">Error al cargar hitos</div>';
+            });
         }
 
-        Utils.openModal('planDetailModal');
+        // --- B. DOCUMENTOS ---
+        const docsContainer = document.getElementById('detailDocsList');
+        if (docsContainer) {
+            docsContainer.className = "";
+            docsContainer.style.cssText = "display:grid; gap:12px; padding:0 8px;";
+            docsContainer.innerHTML = '<div class="text-center p-4"><i class="fas fa-spinner fa-spin text-amber-500"></i> <span class="text-slate-400 text-sm ml-2">Buscando evidencia...</span></div>';
 
-        // 3. DOCUMENTOS (Card Enhanced)
-        const dDiv = document.getElementById('detailDocsList');
-        dDiv.className = "";
-        dDiv.style.cssText = "display:grid; gap:12px; padding:0 8px;";
-        dDiv.innerHTML = '<div style="text-align:center; padding:20px; color:#cbd5e1;">Cargando documentos...</div>';
+            API.get(`/plan-maestro/${id}/documentos`).then(docs => {
+                if (docs && docs.length > 0) {
+                    docsContainer.innerHTML = docs.map(d => {
+                        const isPdf = d.nombre_archivo.toLowerCase().endsWith('.pdf');
+                        const isImg = /\.(jpg|jpeg|png|webp|gif)$/i.test(d.nombre_archivo);
+                        const canPreview = isPdf || isImg;
 
-        try {
-            const docs = await API.get(`/plan-maestro/${id}/documentos`);
-            if (docs && docs.length > 0) {
-                dDiv.innerHTML = docs.map(d => {
-                    const isPdf = d.nombre_archivo.toLowerCase().endsWith('.pdf');
-                    const isImg = /\.(jpg|jpeg|png|webp|gif)$/i.test(d.nombre_archivo);
-                    const canPreview = isPdf || isImg;
+                        let colors = { bg: '#f1f5f9', icon: '#94a3b8', text: 'fa-file' };
+                        if (isPdf) colors = { bg: '#fee2e2', icon: '#dc2626', text: 'fa-file-pdf' };
+                        else if (isImg) colors = { bg: '#f3e8ff', icon: '#9333ea', text: 'fa-file-image' };
+                        else if (/\.(xls|xlsx|csv)$/i.test(d.nombre_archivo)) colors = { bg: '#dcfce7', icon: '#16a34a', text: 'fa-file-excel' };
+                        else if (/\.(doc|docx)$/i.test(d.nombre_archivo)) colors = { bg: '#dbeafe', icon: '#2563eb', text: 'fa-file-word' };
 
-                    let colors = { bg: '#f1f5f9', icon: '#94a3b8', text: 'fa-file' };
-                    if (isPdf) colors = { bg: '#fee2e2', icon: '#dc2626', text: 'fa-file-pdf' };
-                    else if (isImg) colors = { bg: '#f3e8ff', icon: '#9333ea', text: 'fa-file-image' };
-                    else if (/\.(xls|xlsx|csv)$/i.test(d.nombre_archivo)) colors = { bg: '#dcfce7', icon: '#16a34a', text: 'fa-file-excel' };
-                    else if (/\.(doc|docx)$/i.test(d.nombre_archivo)) colors = { bg: '#dbeafe', icon: '#2563eb', text: 'fa-file-word' };
+                        const url = `${API.BASE}/uploads/${d.ruta_archivo}`;
 
-                    const url = `${API.BASE}/uploads/${d.ruta_archivo}`;
-
-                    return `
-                    <div style="background:white; padding:12px; border-radius:16px; border:1px solid #f1f5f9; box-shadow:0 4px 15px rgba(0,0,0,0.03); display:flex; justify-content:space-between; align-items:center; transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                         <div style="display:flex; align-items:center; gap:16px;">
-                            <div style="width:50px; height:50px; border-radius:14px; background:${colors.bg}; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:${colors.icon};">
-                                <i class="fas ${colors.text}"></i>
-                            </div>
-                            <div>
-                                <div style="font-weight:700; color:#334155; font-size:0.95rem;">${d.nombre_archivo}</div>
-                                <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">
-                                    Subido por <span style="color:#64748b; font-weight:600;">${d.uploader || 'Anon'}</span> • ${Utils.formatDate(d.created_at)}
+                        return `
+                        <div style="background:white; padding:12px; border-radius:16px; border:1px solid #f1f5f9; box-shadow:0 4px 15px rgba(0,0,0,0.03); display:flex; justify-content:space-between; align-items:center; transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                             <div style="display:flex; align-items:center; gap:16px;">
+                                <div style="width:50px; height:50px; border-radius:14px; background:${colors.bg}; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:${colors.icon};">
+                                    <i class="fas ${colors.text}"></i>
                                 </div>
-                            </div>
-                         </div>
-                         <div style="display:flex; gap:8px;">
-                            ${canPreview ? `
-                                <button onclick="Utils.previewFile('${url}', 'Vista Previa')" style="width:36px; height:36px; border-radius:10px; border:none; background:#f8fafc; color:#64748b; cursor:pointer; transition:all 0.2s;" title="Ver" onmouseover="this.style.background='#e0f2fe'; this.style.color='#0284c7';" onmouseout="this.style.background='#f8fafc'; this.style.color='#64748b';">
-                                    <i class="fas fa-eye"></i>
+                                <div>
+                                    <div style="font-weight:700; color:#334155; font-size:0.95rem;">${d.nombre_archivo}</div>
+                                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">
+                                        Subido por <span style="color:#64748b; font-weight:600;">${d.uploader || 'Anon'}</span> • ${Utils.formatDate(d.created_at)}
+                                    </div>
+                                </div>
+                             </div>
+                             <div style="display:flex; gap:8px;">
+                                ${canPreview ? `
+                                    <button onclick="Utils.previewFile('${url}', 'Vista Previa')" style="width:36px; height:36px; border-radius:10px; border:none; background:#f8fafc; color:#64748b; cursor:pointer; transition:all 0.2s;" title="Ver" onmouseover="this.style.background='#e0f2fe'; this.style.color='#0284c7';" onmouseout="this.style.background='#f8fafc'; this.style.color='#64748b';">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                ` : ''}
+                                 <a href="${url}" download target="_blank" style="width:36px; height:36px; border-radius:10px; border:none; background:#f8fafc; color:#64748b; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" title="Descargar" onmouseover="this.style.background='#dcfce7'; this.style.color='#16a34a';" onmouseout="this.style.background='#f8fafc'; this.style.color='#64748b';">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                                <button onclick="if(confirm('¿Borrar?')) { DocumentsModule.delete(${d.id}); setTimeout(()=>PlanModule.viewDetails(${id}), 500); }" style="width:36px; height:36px; border-radius:10px; border:none; background:#fff1f2; color:#e11d48; cursor:pointer;" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
                                 </button>
-                            ` : ''}
-                             <a href="${url}" download target="_blank" style="width:36px; height:36px; border-radius:10px; border:none; background:#f8fafc; color:#64748b; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" title="Descargar" onmouseover="this.style.background='#dcfce7'; this.style.color='#16a34a';" onmouseout="this.style.background='#f8fafc'; this.style.color='#64748b';">
-                                <i class="fas fa-download"></i>
-                            </a>
-                            <button onclick="if(confirm('¿Borrar?')) { DocumentsModule.delete(${d.id}); setTimeout(()=>PlanModule.viewDetails(${id}), 500); }" style="width:36px; height:36px; border-radius:10px; border:none; background:#fff1f2; color:#e11d48; cursor:pointer;" title="Eliminar">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                         </div>
-                    </div>`;
-                }).join('');
-            } else {
-                dDiv.innerHTML = `
-                    <div style="text-align:center; padding:30px; background:#f8fafc; border-radius:16px; border:1px dashed #cbd5e1;">
-                        <i class="fas fa-folder-open" style="font-size:2rem; color:#cbd5e1; margin-bottom:10px;"></i>
-                        <div style="color:#94a3b8; font-size:0.9rem;">Sin documentos adjuntos</div>
-                    </div>
-                 `;
-            }
-        } catch (e) { dDiv.innerHTML = 'Error docs'; }
+                             </div>
+                        </div>`;
+                    }).join('');
+                } else {
+                    docsContainer.innerHTML = `
+                        <div style="text-align:center; padding:30px; background:#f8fafc; border-radius:16px; border:1px dashed #cbd5e1;">
+                            <i class="fas fa-folder-open" style="font-size:2rem; color:#cbd5e1; margin-bottom:10px;"></i>
+                            <div style="color:#94a3b8; font-size:0.9rem;">Sin documentos adjuntos</div>
+                        </div>
+                     `;
+                }
+            }).catch(e => {
+                docsContainer.innerHTML = '<div class="text-sm text-red-400 bg-red-50 p-3 rounded-lg text-center">Error al cargar documentos</div>';
+            });
+        }
 
-        // 4. OBSERVACIONES (Bitácora)
-        const oDiv = document.getElementById('detailObsList');
-        if (oDiv) {
-            oDiv.className = "";
-            oDiv.style.cssText = "display:flex; flex-direction:column; gap:16px; padding:0 8px;";
+        // --- C. OBSERVACIONES ---
+        const obsContainer = document.getElementById('detailObsList');
+        if (obsContainer) {
+            obsContainer.className = "";
+            obsContainer.style.cssText = "display:flex; flex-direction:column; gap:16px; padding:0 8px;";
 
-            // Render Form
             const formHtml = `
                 <div style="background:#f8fafc; padding:12px; border-radius:12px; border:1px solid #e2e8f0; display:flex; gap:10px; align-items:start;">
                     <div style="width:32px; height:32px; border-radius:50%; background:#3b82f6; color:white; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
@@ -730,11 +735,9 @@ const PlanModule = {
                 </div>
             `;
 
-            oDiv.innerHTML = formHtml + '<div id="obsItemsList" style="display:flex; flex-direction:column; gap:12px; margin-top:8px;"><div style="text-align:center; color:#cbd5e1;">Cargando historial...</div></div>';
+            obsContainer.innerHTML = formHtml + '<div id="obsItemsList" class="mt-4 space-y-3"><div class="text-center p-4"><i class="fas fa-spinner fa-spin text-blue-500"></i> <span class="text-slate-400 text-sm ml-2">Cargando bitácora...</span></div></div>';
 
-            // Load Items
-            try {
-                const obs = await API.get(`/plan-maestro/${id}/observaciones`);
+            API.get(`/plan-maestro/${id}/observaciones`).then(obs => {
                 const itemsList = document.getElementById('obsItemsList');
                 if (obs && obs.length > 0) {
                     itemsList.innerHTML = obs.map(o => `
@@ -754,7 +757,10 @@ const PlanModule = {
                 } else {
                     itemsList.innerHTML = '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.85rem; font-style:italic;">No hay observaciones aún.</div>';
                 }
-            } catch (e) { console.error(e); }
+            }).catch(e => {
+                const itemsList = document.getElementById('obsItemsList');
+                if (itemsList) itemsList.innerHTML = '<div class="text-sm text-red-400 text-center">Error al cargar bitácora</div>';
+            });
         }
     },
 
