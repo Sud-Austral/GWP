@@ -270,7 +270,7 @@ const RepoModule = {
         else if (t.includes('instrumento')) typeInfo = { color: 'teal', icon: 'fa-tools', label: 'Instrumento' };
         else if (t.includes('benchmark')) typeInfo = { color: 'purple', icon: 'fa-globe-americas', label: 'Benchmark' };
         else if (t.includes('nota')) typeInfo = { color: 'rose', icon: 'fa-newspaper', label: 'Nota de Prensa' };
-        else if (t.includes('manual')) typeInfo = { color: 'cyan', icon: 'fa-book', label: 'Manual' };
+        else if (t.includes('manual') || t.includes('guía') || t.includes('guia')) typeInfo = { color: 'cyan', icon: 'fa-book', label: 'Manual/Guía' };
         else if (t.includes('paper')) typeInfo = { color: 'violet', icon: 'fa-graduation-cap', label: 'Paper' };
         else if (t.includes('otro')) typeInfo = { color: 'slate', icon: 'fa-file', label: 'Otro' };
 
