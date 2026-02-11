@@ -30,11 +30,9 @@ const PlanModule = {
             tbody.innerHTML = Array(10).fill(skeletonRow).join('');
         }
 
-        // Prevent cache with timestamp
-        const data = await API.get('/plan-maestro?t=' + new Date().getTime());
+        // Fetch via centralized DataStore (single source of truth)
+        const data = await DataStore.refreshPlan();
         if (data) {
-            window.appData = window.appData || {};
-            window.appData.plan = data;
 
             // Cascading Filters Setup
             Utils.setupCascadingFilters({
@@ -256,7 +254,17 @@ const PlanModule = {
     },
 
     openModal: async (id = null) => {
-        const form = document.getElementById('activityForm');
+        let form = document.getElementById('activityForm');
+
+        // Guarantee submit handler exists (critical when accessed from Gantt/Calendar without Plan init)
+        const freshForm = form.cloneNode(true);
+        form.parentNode.replaceChild(freshForm, form);
+        freshForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await PlanModule.save();
+        });
+        form = freshForm;
+
         form.reset();
         document.getElementById('actId').value = '';
         document.getElementById('activityModalTitle').textContent = 'Nueva Actividad';
@@ -266,8 +274,8 @@ const PlanModule = {
         document.getElementById('fileStatus').textContent = '';
         document.getElementById('docFile').value = '';
 
-        if (id && window.appData.plan) {
-            const item = window.appData.plan.find(i => i.id === id);
+        if (id && DataStore.plan.length > 0) {
+            const item = DataStore.findPlanItem(id);
             if (item) {
                 document.getElementById('actId').value = item.id;
                 document.getElementById('actCode').value = item.activity_code || '';
@@ -395,8 +403,8 @@ const PlanModule = {
                 Utils.closeModal('activityModal');
             }
             Utils.showToast('Actividad guardada correctamente', 'success');
-            // Reload without refreshing page
-            PlanModule.loadData();
+            // Reload via DataStore — all subscribed modules auto-sync
+            await PlanModule.loadData();
         } else {
             console.error("Save Error:", res);
             Utils.showToast('Error al guardar: ' + (res?.error || 'Error desconocido'), 'error');
@@ -505,8 +513,8 @@ const PlanModule = {
     },
 
     viewDetails: async (id) => {
-        if (!window.appData.plan) return;
-        const item = window.appData.plan.find(i => i.id === id);
+        if (!DataStore.plan.length) return;
+        const item = DataStore.findPlanItem(id);
         if (!item) return;
 
         // --- PALETA DE COLORES TIPO DASHBOARD ---

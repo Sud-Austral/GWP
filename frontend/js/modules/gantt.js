@@ -18,17 +18,15 @@ const GanttModule = {
 
         Utils.renderBreadcrumbs(['Inicio', 'Carta Gantt Global']);
 
-        // Fetch Plan and Hitos in parallel
-        const [planData, hitosData] = await Promise.all([
-            API.get('/plan-maestro?t=' + Date.now()),
-            API.get('/hitos?t=' + Date.now()).catch(() => [])
-        ]);
+        // Fetch via centralized DataStore (single source of truth)
+        const { plan, hitos } = await DataStore.refreshAll();
 
-        window.appData = window.appData || {};
-        window.appData.plan = planData;
+        GanttModule.state.data = plan || [];
+        GanttModule.state.hitos = hitos || [];
 
-        GanttModule.state.data = planData || [];
-        GanttModule.state.hitos = hitosData || [];
+        // Subscribe to data changes (idempotent — unsubscribe first)
+        DataStore.off('plan:updated', GanttModule._onPlanUpdated);
+        DataStore.on('plan:updated', GanttModule._onPlanUpdated);
 
         // Cascading Filters
         Utils.setupCascadingFilters({
@@ -500,7 +498,6 @@ const GanttModule = {
     scrollToToday: () => {
         const scroll = document.getElementById('ganttScrollArea');
         if (scroll) {
-            // Calculate position of today relative to date range
             const now = new Date();
             const minDate = GanttModule.state.minDate;
             const maxDate = GanttModule.state.maxDate;
@@ -512,6 +509,19 @@ const GanttModule = {
             } else {
                 scroll.scrollLeft = scroll.scrollWidth / 2;
             }
+        }
+    },
+
+    // DataStore observer callback — auto-sync on data mutation
+    _onPlanUpdated: (freshData) => {
+        // Only re-render if Gantt view is currently visible
+        const ganttSection = document.getElementById('view-gantt');
+        if (ganttSection && ganttSection.style.display !== 'none') {
+            GanttModule.state.data = freshData || [];
+            GanttModule.applyFilters();
+        } else {
+            // Just update data silently; next init() will use fresh data
+            GanttModule.state.data = freshData || [];
         }
     }
 };

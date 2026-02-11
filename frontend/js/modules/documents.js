@@ -142,7 +142,7 @@ const DocumentsModule = {
         const select = document.getElementById('docPlanSelect');
         select.innerHTML = '<option value="">Cargando...</option>';
 
-        const plans = await API.get('/plan-maestro');
+        const plans = DataStore.plan.length > 0 ? DataStore.plan : await DataStore.refreshPlan();
 
         select.innerHTML = '<option value="">Seleccione Actividad...</option>';
         if (plans) {

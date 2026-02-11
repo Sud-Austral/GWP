@@ -10,11 +10,8 @@ const CalendarModule = {
     init: async () => {
         Utils.renderBreadcrumbs(['Inicio', 'Calendario de Hitos']);
 
-        // Fetch Data
-        const [plan, hitos] = await Promise.all([
-            API.get('/plan-maestro'),
-            API.get('/hitos')
-        ]);
+        // Fetch via centralized DataStore (single source of truth)
+        const { plan, hitos } = await DataStore.refreshAll();
 
         const events = [];
 

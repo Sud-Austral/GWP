@@ -19,7 +19,7 @@ const HitosModule = {
 
         Utils.renderBreadcrumbs(['Inicio', 'Hitos e Inspectores']);
 
-        const data = await API.get('/hitos');
+        const data = await DataStore.refreshHitos();
         HitosModule.data = data || [];
 
         Utils.setupCascadingFilters({
@@ -156,7 +156,7 @@ const HitosModule = {
         // Load Plans for Select
         const select = document.getElementById('hitoPlanSelect');
         select.innerHTML = '<option value="">Cargando...</option>';
-        const plans = await API.get('/plan-maestro');
+        const plans = DataStore.plan.length > 0 ? DataStore.plan : await DataStore.refreshPlan();
 
         select.innerHTML = '<option value="">Seleccione Actividad...</option>';
         if (plans) {

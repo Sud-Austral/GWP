@@ -8,18 +8,12 @@ const StatsModule = {
 
         Utils.renderBreadcrumbs(['Inicio', 'Panel de Control']);
 
-        // Ensure data exists
-        if (!window.appData?.plan) {
-            await PlanModule.loadData();
-        }
-        const plan = window.appData.plan || [];
+        // Ensure data exists via centralized DataStore
+        const plan = DataStore.plan.length > 0 ? DataStore.plan : await DataStore.refreshPlan() || [];
 
-        // Fetch milestones
-        let hitosCount = 0;
-        try {
-            const hRes = await API.get('/hitos');
-            hitosCount = hRes ? hRes.length : 0;
-        } catch (e) { }
+        // Fetch milestones via DataStore
+        const hitosData = DataStore.hitos.length > 0 ? DataStore.hitos : await DataStore.refreshHitos() || [];
+        const hitosCount = hitosData.length;
 
         StatsModule.renderKPIs(plan, hitosCount);
         StatsModule.renderProgressRing(plan);
@@ -443,7 +437,7 @@ const StatsModule = {
         try {
             // Fetch all parallel data sources
             const [hitosRes, obsRes, docsRes] = await Promise.all([
-                API.get('/hitos').catch(() => []),
+                DataStore.hitos.length > 0 ? DataStore.hitos : API.get('/hitos').catch(() => []),
                 API.get('/observaciones').catch(() => []),
                 API.get('/documentos').catch(() => [])
             ]);
