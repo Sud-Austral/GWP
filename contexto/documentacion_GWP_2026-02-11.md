@@ -69,4 +69,5 @@ Implementa lógica de filtros interconectados. Al seleccionar una opción en un 
 - **Vanilla JS:** El proyecto no utiliza frameworks (React/Vue). La manipulación del DOM se realiza directamente mediante `document.createElement` o `innerHTML`.
 - **Gestión de Eventos:** Para evitar la duplicidad de listeners al re-renderizar, se recomienda el uso de `cloneNode(true)` para limpiar elementos antes de asignar nuevos eventos en formularios.
 - **Fechas:** Siempre utilizar las funciones de `Utils` para manejar fechas. El uso directo de `new Date(isoString)` está prohibido por riesgos de desfase de día en diferentes zonas horarias.
+
 - **Cache-Busting:** Al desplegar cambios en JS/CSS, se debe incrementar el parámetro `v=` en las etiquetas `<script>` y `<link>` del archivo `dashboard.html` (v2.7 actual).
