@@ -3,6 +3,12 @@ name: Deploy GWP to GitHub Pages
 on:
   push:
     branches: [ main ]
+  workflow_dispatch: # Permite disparo manual desde la interfaz de GitHub
+
+# Evitar despliegues solapados si haces muchos push seguidos
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -14,17 +20,21 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    # Usamos una versión fija y robusta de Ubuntu para predictibilidad total
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Cache Busting (Update Versions)
         run: |
-          VERSION_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          # Usamos un hash de 12 caracteres (balance perfecto entre seguridad y legibilidad)
+          VERSION_SHORT=$(echo "${{ github.sha }}" | cut -c1-12)
           echo "Actualizando assets a la versión: $VERSION_SHORT"
-          # Reemplazo recursivo en la carpeta frontend
-          find frontend -name "*.html" -exec sed -i "s/?v=[a-zA-Z0-9.]*/?v=$VERSION_SHORT/g" {} +
+          
+          # Reemplazo recursivo optimizado: solo actúa si encuentra el patrón
+          # Usamos una expresión regular más robusta para evitar falsos positivos
+          find frontend -name "*.html" -type f -exec sed -i "s/\?v=[a-zA-Z0-9.]*/?v=$VERSION_SHORT/g" {} +
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -32,10 +42,10 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Indicamos que suba el contenido de la carpeta frontend
           path: './frontend'
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
 
