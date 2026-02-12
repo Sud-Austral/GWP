@@ -11,30 +11,42 @@ const Utils = {
 
     formatDate: (dateString) => {
         if (!dateString) return '-';
+
+        // Manual parsing for YYYY-MM-DD to avoid timezone shifts
+        if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+            // Take only the date part if it contains time
+            const cleanDate = dateString.split('T')[0];
+            const [year, month, day] = cleanDate.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
         const date = new Date(dateString);
         if (isNaN(date)) return dateString;
-        // Use UTC methods to avoid timezone shifting
-        const day = String(date.getUTCDate()).padStart(2, '0');
-        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-        const year = date.getUTCFullYear();
+
+        // Fallback for full timestamps or other formats: use Local time to respect user context
+        // but if it was pure date from backend, the manual check above handles it.
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
         return `${day}/${month}/${year}`;
     },
 
     // NEW: Helper for date inputs (YYYY-MM-DD)
     formatDateForInput: (dateInput) => {
         if (!dateInput) return '';
+
         // Check if it matches simplistic YYYY-MM-DD to avoid Date parsing issues
-        if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-            return dateInput;
+        if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateInput)) {
+            return dateInput.split('T')[0];
         }
 
         const date = new Date(dateInput);
         if (isNaN(date.getTime())) return '';
 
-        // Use UTC to keep the server date exactly
-        const yyyy = date.getUTCFullYear();
-        const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
-        const dd = String(date.getUTCDate()).padStart(2, '0');
+        // Use Local time components
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
         return `${yyyy}-${mm}-${dd}`;
     },
 

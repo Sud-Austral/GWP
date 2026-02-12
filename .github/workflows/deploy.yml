@@ -1,0 +1,41 @@
+name: Deploy GWP to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Cache Busting (Update Versions)
+        run: |
+          VERSION_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "Actualizando assets a la versión: $VERSION_SHORT"
+          # Reemplazo recursivo en la carpeta frontend
+          find frontend -name "*.html" -exec sed -i "s/?v=[a-zA-Z0-9.]*/?v=$VERSION_SHORT/g" {} +
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Indicamos que suba el contenido de la carpeta frontend
+          path: './frontend'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
