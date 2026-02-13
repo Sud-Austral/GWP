@@ -894,6 +894,97 @@ def check_and_create_tables():
     finally:
         if conn: release_db_connection(conn)
 
+# -----------------------
+# CHAT DETALLE (Análisis Profundo)
+# -----------------------
+@app.route("/repositorio/detalle-completo", methods=["POST"])
+@session_required
+def get_repo_details_full(current_user_id):
+    conn = None
+    try:
+        data = request.json
+        ids = data.get("ids", [])
+        if not ids:
+            return jsonify([])
+
+        conn = get_db_connection()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            # 1. Obtener metadatos completos
+            if not ids: return jsonify([])
+            
+            # Safe clean IDs
+            safe_ids = [int(i) for i in ids]
+            if not safe_ids: return jsonify([])
+
+            placeholders = ', '.join(['%s'] * len(safe_ids))
+            query = f"""
+                SELECT r.*, u.nombre as uploader_name
+                FROM repositorio_documentos r
+                LEFT JOIN usuarios u ON r.uploaded_by = u.id
+                WHERE r.id IN ({placeholders})
+            """
+            cur.execute(query, tuple(safe_ids))
+            rows = cur.fetchall()
+
+            # 2. Enriquecer con contenido de archivo
+            results = []
+            for row in rows:
+                item = dict(row)
+                file_content = ""
+                
+                # Intentar leer archivo si existe
+                filepath = item.get('ruta_archivo')
+                if filepath:
+                    full_path = os.path.join(app.config['UPLOAD_FOLDER'], filepath)
+                    if os.path.exists(full_path):
+                        ext = os.path.splitext(full_path)[1].lower()
+                        
+                        try:
+                            # Texto Plano
+                            if ext in ['.txt', '.md', '.json', '.csv', '.py', '.js', '.html', '.css', '.xml']:
+                                with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                    file_content = f.read()
+                            
+                            # Intentar leer PDF si hay librería
+                            elif ext == '.pdf':
+                                try:
+                                    import pypdf
+                                    reader = pypdf.PdfReader(full_path)
+                                    text = []
+                                    for page in reader.pages[:40]: # Limitar pgs
+                                        text.append(page.extract_text())
+                                    file_content = "\\n".join(text)
+                                except ImportError:
+                                    try:
+                                        import PyPDF2
+                                        with open(full_path, 'rb') as f:
+                                            reader = PyPDF2.PdfReader(f)
+                                            text = []
+                                            for page in reader.pages[:40]:
+                                                text.append(page.extract_text())
+                                            file_content = "\\n".join(text)
+                                    except ImportError:
+                                        file_content = "[Instale pypdf para extraer texto de PDFs]"
+                            else:
+                                file_content = f"[Formato {ext} no soportado para lectura]"
+
+                        except Exception as e:
+                            file_content = f"[Error leyendo: {str(e)}]"
+                    else:
+                        file_content = "[Archivo físico no encontrado]"
+                
+                item['file_content'] = file_content
+                results.append(item)
+
+        return jsonify(results)
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: release_db_connection(conn)
+
+
 if __name__ == '__main__':
     check_and_create_tables() # Run migration check on startup
     cert_path = os.path.abspath("fullchain.pem")

@@ -188,14 +188,23 @@ const ChatModule = {
 
     // Call AI API
     callAI: async (prompt) => {
+        // 1. Check if Detail Mode should be activated (1-2 docs)
+        const docs = ChatModule.getDocuments();
+        if (window.ChatDetalle && ChatDetalle.shouldActivate(docs)) {
+            try {
+                return await ChatDetalle.process(docs, prompt, ChatModule.callAI_Raw);
+            } catch (e) {
+                console.warn("Fallo en modo detalle, volviendo a modo estándar:", e);
+                // Fallback to standard mode execution below
+            }
+        }
+
+        // 2. Standard Mode (Summary Context)
         const { API_KEY, API_URL, MODEL_NAME } = ChatModule.config;
 
-        // Build context from documents
-        const docs = ChatModule.getDocuments();
+        // Build summary context from documents
         const docsSummary = docs.slice(0, 100).map(d => {
-            // Use resumen_largo if available, otherwise fall back to descripcion
             const content = d.resumen_largo || d.descripcion || '';
-            // Include ID for citation
             return `[ID:${d.id}] - "${d.titulo}" (${d.tipo_documento || 'Doc'}): ${content.substring(0, 500)}`;
         }).join('\n');
 
@@ -216,13 +225,19 @@ INSTRUCCIONES CLAVE:
    - Estructura con títulos y viñetas para facilitar la lectura.
 
 3. **Preguntas de Seguimiento**:
-Al final de tu respuesta, sugieres 3 preguntas de seguimiento con este formato EXACTO:
+Al final de tu respuesta, sugieres 3 preguntas de seguimiento que esten estrechamente relacionadas con los documentos del contexto con este formato EXACTO:
 
 [SUGERENCIA: ¿Pregunta 1?]
 [SUGERENCIA: ¿Pregunta 2?]
 [SUGERENCIA: ¿Pregunta 3?]`;
 
-        // Make request with retry for rate limiting
+        return await ChatModule.callAI_Raw(prompt, systemPrompt);
+    },
+
+    // Raw API Caller (Re-usable)
+    callAI_Raw: async (userPrompt, systemPrompt) => {
+        const { API_KEY, API_URL, MODEL_NAME } = ChatModule.config;
+
         const makeRequest = async (retryCount = 0) => {
             const response = await fetch(API_URL, {
                 method: 'POST',
@@ -234,7 +249,7 @@ Al final de tu respuesta, sugieres 3 preguntas de seguimiento con este formato E
                     model: MODEL_NAME,
                     messages: [
                         { role: "system", content: systemPrompt },
-                        { role: "user", content: prompt }
+                        { role: "user", content: userPrompt }
                     ],
                     temperature: 0.2
                 })
@@ -242,8 +257,7 @@ Al final de tu respuesta, sugieres 3 preguntas de seguimiento con este formato E
 
             if (response.status === 429) {
                 if (retryCount < 2) {
-                    // Wait and retry (exponential backoff)
-                    const waitTime = (retryCount + 1) * 3000; // 3s, 6s
+                    const waitTime = (retryCount + 1) * 3000;
                     await new Promise(resolve => setTimeout(resolve, waitTime));
                     return makeRequest(retryCount + 1);
                 }
