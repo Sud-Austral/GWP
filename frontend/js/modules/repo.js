@@ -352,34 +352,37 @@ const RepoModule = {
         const hasFile = !!item.ruta_archivo;
         const isSelected = RepoModule.selectedIds.has(item.id);
 
-        // Colors & Icons logic (reused)
+        // Colors & Icons logic
         let typeInfo = { color: 'blue', icon: 'fa-file-alt', label: 'Documento' };
         const t = (item.tipo_documento || '').toLowerCase();
         if (t.includes('ley')) typeInfo = { color: 'orange', icon: 'fa-balance-scale', label: 'Ley' };
         else if (t.includes('decreto')) typeInfo = { color: 'amber', icon: 'fa-gavel', label: 'Decreto' };
         else if (t.includes('informe')) typeInfo = { color: 'indigo', icon: 'fa-chart-pie', label: 'Informe' };
         else if (t.includes('acta')) typeInfo = { color: 'emerald', icon: 'fa-users', label: 'Acta' };
-        // ... (rest of type logic same as before) ...
-        const colorClass = `bg-${typeInfo.color}-50 text-${typeInfo.color}-600 border-${typeInfo.color}-100`;
-        const status = item.estado_procesamiento || 'Pendiente';
+        else if (t.includes('instrumento')) typeInfo = { color: 'teal', icon: 'fa-tools', label: 'Instrumento' };
+        else if (t.includes('benchmark')) typeInfo = { color: 'purple', icon: 'fa-globe-americas', label: 'Benchmark' };
+        else if (t.includes('nota')) typeInfo = { color: 'rose', icon: 'fa-newspaper', label: 'Nota de Prensa' };
+        else if (t.includes('manual') || t.includes('guía') || t.includes('guia')) typeInfo = { color: 'cyan', icon: 'fa-book', label: 'Manual/Guía' };
 
-        // Select Checkbox UI
+        const colorClass = `bg-${typeInfo.color}-50 text-${typeInfo.color}-600 border-${typeInfo.color}-100`;
+
+        // Selection UI
         const checkIcon = isSelected ? 'fa-check-square text-indigo-600' : 'fa-square text-slate-300 group-hover:text-slate-400';
         const cardBorder = isSelected ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-100';
 
         // Tags
         const tags = item.etiquetas ? item.etiquetas.split(',').map(tag =>
-            `<span class="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-[10px] font-medium text-slate-500 uppercase tracking-wide shadow-sm">${tag.trim()}</span>`
+            `<span class="px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200 text-[10px] font-medium text-slate-500 uppercase tracking-wide">${tag.trim()}</span>`
         ).join('') : '';
 
-        // Actions
+        // ACTIONS
         let mainAction = '';
         if (hasFile) {
             const url = `${API.BASE}/uploads/${item.ruta_archivo}`;
             const isPreviewable = /\.(pdf|jpg|png)$/i.test(item.ruta_archivo);
             mainAction = `
-                <div class="flex gap-2 w-full mt-4">
-                    <a href="${url}" target="_blank" class="flex-1 btn btn-sm btn-outline justify-center border-slate-200 text-slate-600 hover:bg-slate-50">
+                <div class="flex gap-2 w-full mt-4 pt-3 border-t border-slate-50">
+                    <a href="${url}" target="_blank" class="flex-1 btn btn-sm btn-outline justify-center border-slate-200 text-slate-600 hover:bg-slate-50" title="Descargar">
                         <i class="fas fa-download mr-1"></i> Descargar
                     </a>
                     ${isPreviewable ? `
@@ -390,7 +393,7 @@ const RepoModule = {
             `;
         } else if (isUrl) {
             mainAction = `
-                <div class="w-full mt-4">
+                <div class="w-full mt-4 pt-3 border-t border-slate-50">
                     <a href="${item.enlace_externo}" target="_blank" class="btn btn-sm w-full btn-primary justify-center bg-blue-600 hover:bg-blue-700 text-white">
                         <i class="fas fa-external-link-alt mr-1"></i> Abrir Enlace
                     </a>
@@ -398,11 +401,88 @@ const RepoModule = {
             `;
         }
 
+        // KEY POINTS PARSING
+        let keyPointsHtml = '';
+        if (item.puntos_clave) {
+            let points = [];
+            let raw = item.puntos_clave.trim();
+            if (raw && raw !== 'null' && raw !== '[]') {
+                // Estrategia Secuencial de Parseo
+
+                // 1. JSON Array [...]
+                if (raw.startsWith('[')) {
+                    try {
+                        const parsed = JSON.parse(raw);
+                        if (Array.isArray(parsed)) points = parsed;
+                    } catch (e) { }
+                }
+
+                // 2. Postgres Array {...} 
+                // (Solo si falló el anterior o no era JSON array)
+                if (points.length === 0 && raw.startsWith('{') && raw.endsWith('}')) {
+                    try {
+                        const inner = raw.substring(1, raw.length - 1);
+                        // Regex para capturar: "contenido" o contenido_sin_comillas
+                        const regex = /"((?:[^"\\]|\\.)*)"|([^,]+)/g;
+                        let match;
+                        while ((match = regex.exec(inner)) !== null) {
+                            let val = match[1] || match[2]; // Grupo 1 (con comillas) o Grupo 2 (sin)
+                            if (val) {
+                                points.push(val.replace(/\\"/g, '"').trim());
+                            }
+                        }
+                    } catch (e) { }
+                }
+
+                // 3. Texto plano / Bullets (Fallback final)
+                if (points.length === 0) {
+                    points = raw.split('\n').filter(p => p.trim().length > 0).map(p => p.replace(/^[-•*]\s*/, ''));
+                }
+            }
+
+            if (Array.isArray(points) && points.length > 0) {
+                const visiblePoints = points.slice(0, 3);
+                const hiddenPoints = points.slice(3);
+
+                keyPointsHtml = `
+                    <div class="mt-3 bg-indigo-50/50 rounded-lg p-3 border border-indigo-100/50">
+                        <div class="flex items-center gap-1 mb-2">
+                            <i class="fas fa-lightbulb text-indigo-400 text-[10px]"></i>
+                            <h4 class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Puntos Clave</h4>
+                        </div>
+                        <ul class="list-none space-y-1.5">
+                            ${visiblePoints.map(p => `
+                                <li class="text-xs text-slate-600 flex items-start gap-1.5 leading-snug">
+                                    <span class="text-indigo-400 mt-0.5">•</span>
+                                    <span>${p}</span>
+                                </li>
+                            `).join('')}
+                            
+                            ${hiddenPoints.length > 0 ? `
+                                <div id="more-points-${item.id}" class="hidden space-y-1.5">
+                                    ${hiddenPoints.map(p => `
+                                        <li class="text-xs text-slate-600 flex items-start gap-1.5 leading-snug">
+                                            <span class="text-indigo-400 mt-0.5">•</span>
+                                            <span>${p}</span>
+                                        </li>
+                                    `).join('')}
+                                </div>
+                                <li class="pl-3 italic text-indigo-500 text-[10px] cursor-pointer hover:underline mt-1" 
+                                    onclick="event.stopPropagation(); const el = document.getElementById('more-points-${item.id}'); el.classList.toggle('hidden'); this.innerText = el.classList.contains('hidden') ? '+${hiddenPoints.length} más...' : 'Ver menos';">
+                                    +${hiddenPoints.length} más...
+                                </li>
+                            ` : ''}
+                        </ul>
+                    </div>
+                 `;
+            }
+        }
+
         return `
             <div class="repo-card group bg-white rounded-2xl border ${cardBorder} shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full relative overflow-hidden">
                 <!-- Selection Overlay/Click Area -->
-                 <div class="absolute top-4 right-4 z-10 cursor-pointer" onclick="RepoModule.toggleSelection(${item.id})">
-                    <i class="far ${checkIcon} text-2xl transition-colors bg-white rounded"></i>
+                 <div class="absolute top-4 right-4 z-10 cursor-pointer p-1" onclick="RepoModule.toggleSelection(${item.id})">
+                    <i class="far ${checkIcon} text-2xl transition-colors bg-white rounded-md shadow-sm"></i>
                 </div>
 
                 <!-- Top Decoration -->
@@ -425,28 +505,32 @@ const RepoModule = {
                     </div>
 
                     <!-- Description -->
-                    <div class="mb-4 text-xs text-slate-500 line-clamp-3 leading-relaxed">
-                        ${item.descripcion || 'Sin descripción disponible.'}
+                    <div class="mb-3">
+                         <div class="text-xs text-slate-500 leading-relaxed line-clamp-3 group-hover:line-clamp-none transition-all duration-500" title="Click para expandir">
+                            <span class="font-semibold text-slate-700">Resumen:</span> ${item.descripcion || 'Sin descripción disponible.'}
+                        </div>
                     </div>
+
+                    <!-- Key Points (Insights) -->
+                    ${keyPointsHtml}
 
                     <div class="flex-grow"></div>
 
                     <!-- Tags -->
-                    <div class="flex flex-wrap gap-2 mt-2 mb-2">
-                        ${tags}
-                    </div>
+                    ${tags ? `<div class="flex flex-wrap gap-2 mt-4 mb-2">${tags}</div>` : ''}
 
-                     <div class="pt-3 mt-2 border-t border-slate-50 flex items-center justify-between text-xs text-slate-400 font-medium">
+                    <!-- Footer Info -->
+                     <div class="pt-2 mt-2 border-t border-slate-50 flex items-center justify-between text-xs text-slate-400 font-medium">
                         <div class="flex items-center gap-2">
                             <i class="far fa-calendar-alt"></i> <span>${item.fecha_publicacion ? item.fecha_publicacion.substring(0, 4) : 'N/A'}</span>
                              <span class="text-slate-200">|</span>
                             <span>${item.fuente_origen || 'Origen Desc.'}</span>
                         </div>
                         
-                        <!-- Edit/Delete (visible on hover) -->
+                        <!-- Actions (Edit/Delete) -->
                         <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                             <button onclick="RepoModule.edit(${item.id})" class="text-slate-400 hover:text-blue-500" title="Editar"><i class="fas fa-pencil-alt"></i></button>
-                             <button onclick="RepoModule.delete(${item.id})" class="text-slate-400 hover:text-red-500" title="Eliminar"><i class="fas fa-trash"></i></button>
+                             <button onclick="RepoModule.edit(${item.id})" class="text-slate-400 hover:text-blue-500 px-1" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                             <button onclick="RepoModule.delete(${item.id})" class="text-slate-400 hover:text-red-500 px-1" title="Eliminar"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
 
