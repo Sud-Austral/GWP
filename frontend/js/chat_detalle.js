@@ -48,6 +48,13 @@ const ChatDetalle = {
 
             // 2. Construir un System Prompt Especializado
             const contextText = fullDocs.map(d => {
+                // Limitar longitud para evitar errores 429/Token Limit
+                const MAX_CHARS = 25000;
+                let rawContent = d.file_content || '(No se pudo extraer texto del archivo físico, básate en los metadatos anteriores)';
+                if (rawContent.length > MAX_CHARS) {
+                    rawContent = rawContent.substring(0, MAX_CHARS) + "\n\n[... CONTENIDO TRUNCADO POR EXCESO DE LONGITUD ...]";
+                }
+
                 let content = `
 === INICIO DOCUMENTO ID:${d.id} ===
 TÍTULO: ${d.titulo || 'Sin título'}
@@ -62,7 +69,7 @@ ENLACE EXTERNO: ${d.enlace_externo || ''}
 SUBIDO POR: ${d.uploader_name || 'Desconocido'}
 
 --- CONTENIDO DEL ARCHIVO O TEXTO EXTENDIDO ---
-${d.file_content || '(No se pudo extraer texto del archivo físico, básate en los metadatos anteriores)'}
+${rawContent}
 === FIN DOCUMENTO ID:${d.id} ===
 `;
                 return content;

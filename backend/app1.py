@@ -945,6 +945,25 @@ def get_repo_details_full(current_user_id):
                                 with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                                     file_content = f.read()
                             
+                            # DOCX (Word)
+                            elif ext == '.docx':
+                                try:
+                                    import docx
+                                    doc = docx.Document(full_path)
+                                    text = []
+                                    # Párrafos
+                                    for para in doc.paragraphs:
+                                        if para.text.strip():
+                                            text.append(para.text)
+                                    # Tablas (básico)
+                                    for table in doc.tables:
+                                        for row in table.rows:
+                                            row_text = [cell.text for cell in row.cells]
+                                            text.append(" | ".join(row_text))
+                                    file_content = "\n".join(text)
+                                except ImportError:
+                                    file_content = "[Instale 'python-docx' para leer archivos Word .docx]"
+
                             # Intentar leer PDF si hay librería
                             elif ext == '.pdf':
                                 try:
