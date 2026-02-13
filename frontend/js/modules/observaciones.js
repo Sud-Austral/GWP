@@ -45,6 +45,10 @@ const ObservacionesModule = {
         ObservacionesModule.setupEvents();
     },
 
+    setupEvents: () => {
+        // Eventos adicionales si fueran necesarios
+    },
+
     render: (data) => {
         const container = document.getElementById('obsGrid');
         if (!container) return;
