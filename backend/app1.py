@@ -1,4 +1,3 @@
-
 import os
 import traceback
 import time
@@ -13,7 +12,24 @@ from flask_cors import CORS
 from functools import wraps
 from werkzeug.utils import secure_filename
 import datetime
+import logging
+from logging.handlers import RotatingFileHandler
 from flask.json.provider import DefaultJSONProvider
+
+# -----------------------
+# LIBRERÍAS DE DOCUMENTOS (CRÍTICAS)
+# -----------------------
+try:
+    import docx
+    HAS_DOCX = True
+except ImportError:
+    HAS_DOCX = False
+
+try:
+    import pypdf
+    HAS_PYPDF = True
+except ImportError:
+    HAS_PYPDF = False
 
 # -----------------------
 # CONFIGURACIÓN
@@ -24,7 +40,23 @@ DB_CONNECTION_STRING = os.getenv(
     "postgresql://postgres:UnaCasaEnUnArbol2024@localhost:5432/GWP"
 )
 
+# -----------------------
+# LOGGING CONFIGURATION
+# -----------------------
+log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
+log_file = 'app_backend.log'
+
+my_handler = RotatingFileHandler(log_file, mode='a', maxBytes=5*1024*1024, 
+                                 backupCount=2, encoding=None, delay=0)
+my_handler.setFormatter(log_formatter)
+my_handler.setLevel(logging.INFO)
+
 app = Flask(__name__)
+app.logger.addHandler(my_handler)
+app.logger.setLevel(logging.INFO)
+
+logger = app.logger
+logger.info("Backend GWP (Gestión Consultorías) iniciando...")
 
 # PATCH: Date Serialization Fix
 class CustomJSONProvider(DefaultJSONProvider):
@@ -43,37 +75,66 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 CORS(app)
 
-print("Backend GWP (Gestión Consultorías) iniciando...")
-
 # Pool de conexiones
 connection_pool = None
-active_sessions = {} # { token: user_id }
+active_sessions = {}  # { token: user_id }
 
 # -----------------------
 # DATABASE POOL
 # -----------------------
 def init_connection_pool():
     global connection_pool
-    try:
-        connection_pool = psycopg2.pool.ThreadedConnectionPool(
-            minconn=1,
-            maxconn=10,
-            dsn=DB_CONNECTION_STRING
-        )
-        print("Pool de conexiones DB inicializado.")
-    except Exception as e:
-        print("ERROR inicializando pool:", e)
+    retries = 5
+    while retries > 0:
+        try:
+            connection_pool = psycopg2.pool.ThreadedConnectionPool(
+                minconn=1,
+                maxconn=50, # Aumentado de 10 a 50
+                dsn=DB_CONNECTION_STRING
+            )
+            logger.info("Pool de conexiones DB inicializado (maxconn=50).")
+            return
+        except Exception as e:
+            retries -= 1
+            logger.error(f"Error inicializando pool (reintentos restantes {retries}): {e}")
+            if retries == 0:
+                logger.critical("No se pudo conectar a la base de datos tras múltiples intentos.")
+            time.sleep(2)
 
 def get_db_connection():
     if not connection_pool:
         init_connection_pool()
-    return connection_pool.getconn()
+    
+    conn = connection_pool.getconn()
+    
+    # VALIDACIÓN: Test-on-borrow (SELECT 1)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+    except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+        logger.warning(f"Conexión muerta detectada, reintentando... {e}")
+        connection_pool.putconn(conn, close=True)
+        conn = connection_pool.getconn()
+        
+    return conn
 
 def release_db_connection(conn):
     if connection_pool and conn:
         connection_pool.putconn(conn)
 
 init_connection_pool()
+
+# -----------------------
+# GLOBAL ERROR HANDLER
+# -----------------------
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Log the full stack trace
+    logger.error(f"UNHANDLED EXCEPTION: {traceback.format_exc()}")
+    return jsonify({
+        "error": "Error interno del servidor",
+        "details": str(e) if app.debug else "Consulte los logs para más detalles"
+    }), 500
 
 # -----------------------
 # MIDDLEWARE & AUTH
@@ -118,7 +179,7 @@ def login():
             
         return jsonify({"message": "Credenciales inválidas"}), 401
     except Exception as e:
-        traceback.print_exc()
+        logger.error(f"Error procesando petición: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)
@@ -141,7 +202,7 @@ def register():
             
         return jsonify({"message": "Usuario creado", "id": user_id})
     except Exception as e:
-        traceback.print_exc()
+        logger.error(f"Error procesando petición: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)
@@ -256,7 +317,7 @@ def get_plan(current_user_id):
             rows = cur.fetchall()
         return jsonify(rows)
     except Exception as e:
-        traceback.print_exc()
+        logger.error(f"Error procesando petición: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)
@@ -290,7 +351,7 @@ def create_plan_item(current_user_id):
             conn.commit()
         return jsonify({"id": new_id, "message": "Item creado"}), 201
     except Exception as e:
-        traceback.print_exc()
+        logger.error(f"Error procesando petición: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)
@@ -321,7 +382,7 @@ def update_plan_item(current_user_id, id_item):
             conn.commit()
         return jsonify({"message": "Item actualizado"})
     except Exception as e:
-        traceback.print_exc()
+        logger.error(f"Error procesando petición: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)
@@ -434,7 +495,7 @@ def update_delete_hito(current_user_id, hito_id):
             return jsonify({"message": "Hito actualizado"})
             
     except Exception as e:
-        traceback.print_exc()
+        logger.error(f"Error procesando petición: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)
@@ -487,7 +548,7 @@ def get_plan_docs(current_user_id, plan_id):
             rows = cur.fetchall()
         return jsonify(rows)
     except Exception as e:
-        traceback.print_exc()
+        logger.error(f"Error procesando petición: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)
@@ -532,7 +593,7 @@ def upload_file(current_user_id):
             
         return jsonify({"message": "Archivo subido"}), 201
     except Exception as e:
-        traceback.print_exc()
+        logger.error(f"Error procesando petición: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)
@@ -766,7 +827,7 @@ def add_repositorio(current_user_id):
         return jsonify({"message": "Documento agregado al repositorio", "id": new_id}), 201
 
     except Exception as e:
-        traceback.print_exc()
+        logger.error(f"Error procesando petición: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)
@@ -835,7 +896,7 @@ def manage_repositorio(current_user_id, id_doc):
             return jsonify({"message": "Documento actualizado"})
 
     except Exception as e:
-        traceback.print_exc()
+        logger.error(f"Error procesando petición: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)
@@ -850,7 +911,7 @@ def download_file(filename):
 # AUTO-MIGRATION HELPER
 # -----------------------
 def check_and_create_tables():
-    print("Verificando tablas del sistema...")
+    logger.info("Verificando tablas del sistema...")
     conn = None
     try:
         conn = get_db_connection()
@@ -888,9 +949,9 @@ def check_and_create_tables():
                 );
             """)
             conn.commit()
-            print("Tablas verificadas correctamente.")
+            logger.info("Tablas verificadas correctamente.")
     except Exception as e:
-        print("Error en migración automática:", e)
+        logger.error(f"Error en migración automática: {e}")
     finally:
         if conn: release_db_connection(conn)
 
@@ -947,47 +1008,40 @@ def get_repo_details_full(current_user_id):
                             
                             # DOCX (Word)
                             elif ext == '.docx':
-                                try:
-                                    import docx
-                                    doc = docx.Document(full_path)
-                                    text = []
-                                    # Párrafos
-                                    for para in doc.paragraphs:
-                                        if para.text.strip():
-                                            text.append(para.text)
-                                    # Tablas (básico)
-                                    for table in doc.tables:
-                                        for row in table.rows:
-                                            row_text = [cell.text for cell in row.cells]
-                                            text.append(" | ".join(row_text))
-                                    file_content = "\n".join(text)
-                                except ImportError:
+                                if HAS_DOCX:
+                                    try:
+                                        doc = docx.Document(full_path)
+                                        text = []
+                                        for para in doc.paragraphs:
+                                            if para.text.strip(): text.append(para.text)
+                                        for table in doc.tables:
+                                            for row in table.rows:
+                                                row_text = [cell.text for cell in row.cells]
+                                                text.append(" | ".join(row_text))
+                                        file_content = "\n".join(text)
+                                    except Exception as dex:
+                                        file_content = f"[Error leyendo DOCX: {str(dex)}]"
+                                else:
                                     file_content = "[Instale 'python-docx' para leer archivos Word .docx]"
 
-                            # Intentar leer PDF si hay librería
+                            # PDF
                             elif ext == '.pdf':
-                                try:
-                                    import pypdf
-                                    reader = pypdf.PdfReader(full_path)
-                                    text = []
-                                    for page in reader.pages[:40]: # Limitar pgs
-                                        text.append(page.extract_text())
-                                    file_content = "\\n".join(text)
-                                except ImportError:
+                                if HAS_PYPDF:
                                     try:
-                                        import PyPDF2
-                                        with open(full_path, 'rb') as f:
-                                            reader = PyPDF2.PdfReader(f)
-                                            text = []
-                                            for page in reader.pages[:40]:
-                                                text.append(page.extract_text())
-                                            file_content = "\\n".join(text)
-                                    except ImportError:
-                                        file_content = "[Instale pypdf para extraer texto de PDFs]"
+                                        reader = pypdf.PdfReader(full_path)
+                                        text = []
+                                        for page in reader.pages[:40]: # Limitar pgs
+                                            text.append(page.extract_text())
+                                        file_content = "\n".join(text)
+                                    except Exception as pex:
+                                        file_content = f"[Error leyendo PDF: {str(pex)}]"
+                                else:
+                                    file_content = "[Instale pypdf para extraer texto de PDFs]"
                             else:
                                 file_content = f"[Formato {ext} no soportado para lectura]"
 
                         except Exception as e:
+                            logger.error(f"Error procesando archivo {full_path}: {traceback.format_exc()}")
                             file_content = f"[Error leyendo: {str(e)}]"
                     else:
                         file_content = "[Archivo físico no encontrado]"
@@ -998,7 +1052,7 @@ def get_repo_details_full(current_user_id):
         return jsonify(results)
 
     except Exception as e:
-        traceback.print_exc()
+        logger.error(f"Error procesando petición: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: release_db_connection(conn)
@@ -1008,5 +1062,5 @@ if __name__ == '__main__':
     check_and_create_tables() # Run migration check on startup
     cert_path = os.path.abspath("fullchain.pem")
     key_path = os.path.abspath("private.key")
-    print("Iniciando servidor en https://0.0.0.0:8002")
+    logger.info("Iniciando servidor en https://0.0.0.0:8002")
     app.run(host='0.0.0.0', port=8002, ssl_context=(cert_path, key_path))
